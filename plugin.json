@@ -1,0 +1,13 @@
+{
+  "name": "api-tools",
+  "version": "0.1.0",
+  "description": "Database schema design patterns, REST API generation, and backend deployment. Works with any project that needs a production-ready API.",
+  "skills": "skills/",
+  "mcpServers": {
+    "api-tools": {
+      "command": "npx",
+      "args": ["@apso/cli", "mcp", "serve"],
+      "description": "Design schemas, generate APIs, and deploy backends from natural language."
+    }
+  }
+}
