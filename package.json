@@ -2,7 +2,7 @@
   "name": "@apso/skills",
   "version": "0.1.0",
   "description": "Database schema patterns, API generation, and backend deployment skills",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/apsoai/skills.git"
