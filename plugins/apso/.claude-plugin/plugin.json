@@ -1,7 +1,7 @@
 {
   "name": "apso",
   "displayName": "Apso",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Database schema design patterns, REST API generation, and backend deployment. Describe what your application manages and get a validated schema and production-ready API.",
   "author": {
     "name": "Apso",

@@ -12,7 +12,7 @@
       "name": "apso",
       "source": "./plugins/apso",
       "description": "Database schema design patterns, REST API generation, and backend deployment.",
-      "version": "0.1.0"
+      "version": "0.2.0"
     }
   ]
 }
