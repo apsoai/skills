@@ -1,0 +1,59 @@
+name: plugin-release-guard
+
+# Fails a PR that changes the published plugin without bumping the version,
+# or whose plugin.json / marketplace.json versions disagree. This is the guard
+# for the failure that stranded the domain-events skill: a skill merged without
+# a version bump never reaches marketplace installs (`claude plugin update`
+# only pulls a higher advertised version).
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  release-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # need the base ref to diff and read its versions
+
+      - name: Check version agreement + bump-on-change
+        env:
+          BASE: ${{ github.event.pull_request.base.ref }}
+        run: |
+          set -euo pipefail
+          PLUGIN_MANIFEST="plugins/apso/.claude-plugin/plugin.json"
+          MARKET_MANIFEST=".claude-plugin/marketplace.json"
+
+          plugin_ver=$(jq -r '.version' "$PLUGIN_MANIFEST")
+          market_ver=$(jq -r '.plugins[] | select(.name=="apso") | .version' "$MARKET_MANIFEST")
+
+          # 1. The two manifests must advertise the same version.
+          if [ "$plugin_ver" != "$market_ver" ]; then
+            echo "::error::Version mismatch: plugin.json=$plugin_ver but marketplace.json=$market_ver. They must agree."
+            exit 1
+          fi
+
+          # 2. Version must be valid semver.
+          if ! echo "$plugin_ver" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Version '$plugin_ver' is not valid semver (X.Y.Z)."
+            exit 1
+          fi
+
+          git fetch --quiet origin "$BASE"
+          base_ver=$(git show "origin/$BASE:$PLUGIN_MANIFEST" | jq -r '.version')
+
+          # 3. If anything under the published plugin changed, the version must move.
+          changed=$(git diff --name-only "origin/$BASE...HEAD" -- plugins/apso/ || true)
+          if [ -n "$changed" ]; then
+            echo "Published plugin files changed in this PR:"
+            echo "$changed" | sed 's/^/  /'
+            if [ "$plugin_ver" = "$base_ver" ]; then
+              echo "::error::plugins/apso/ changed but version is still $base_ver. Bump it in $PLUGIN_MANIFEST and the apso entry in $MARKET_MANIFEST (e.g. \`claude plugin tag\` validates agreement)."
+              exit 1
+            fi
+            echo "OK: version bumped $base_ver -> $plugin_ver"
+          else
+            echo "OK: no published plugin changes; version bump not required."
+          fi
