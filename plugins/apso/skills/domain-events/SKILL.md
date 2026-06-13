@@ -14,6 +14,13 @@ covers both. The mechanism is language-agnostic; the worked example is TypeScrip
 TypeORM (the reference Apso target). Python/SQLAlchemy and Go/GORM are tracked
 separately — see Related Work.
 
+> **For TypeScript, the durable spine is now generated.** Opting an entity into
+> `emitEvents` makes the generator emit the `DomainEvent` entity, subscriber, mapper, and
+> relay for you (shipped in [apsoai/cli#80](https://github.com/apsoai/cli/pull/80)). So on
+> TS your job shifts from *building* the spine to *customizing* its two extension points —
+> see **Step 7**. Steps 2–5 below are the conceptual model (and the hand-roll path for
+> stacks without generation yet).
+
 ## What You Get
 
 A service where:
@@ -44,7 +51,7 @@ can retry safely.
 ```
 BEGIN;
   UPDATE order SET status='fulfilled';
-  INSERT INTO outbox_event (type, payload, status) VALUES ('order.fulfilled', …, 'pending');
+  INSERT INTO events (type, payload, status) VALUES ('order.fulfilled', …, 'pending');
 COMMIT;                       ← atomic: state + event together
 --- later, out of band ---
 relay: SELECT … WHERE status='pending' → publish → mark 'published'
@@ -70,24 +77,27 @@ The subscriber's `afterInsert` / `afterUpdate` / `afterRemove` hooks receive
 `event.manager` — the manager bound to the *active transaction*. Writing the outbox row
 through it is same-txn, atomic with the state change.
 
+This mirrors exactly what Apso generates into `autogen/events/` for the TypeScript target
+(Step 7) — names and all. Read it as the conceptual model, and as the spine you hand-roll
+for stacks without generation yet (Python #3, Go #4).
+
 ```typescript
 // extension layer — survives `apso generate`
 @EventSubscriber()
-export class OutboxSubscriber implements EntitySubscriberInterface {
-  // Skip our own bookkeeping tables or we recurse forever.
-  private readonly skip = new Set(['OutboxEvent', 'IdempotencyKey']);
+export class DomainEventSubscriber implements EntitySubscriberInterface {
+  // Skip our own table or we recurse forever. Add any idempotency/bookkeeping tables too.
+  private readonly skip = new Set(['DomainEvent']);
 
   private async emit(event: InsertEvent<any> | UpdateEvent<any> | RemoveEvent<any>, action: string) {
     const name = event.metadata.name;
-    if (this.skip.has(name)) return;                      // recursion guard
-    const repo = event.manager.getRepository(OutboxEvent); // SAME transaction
+    if (this.skip.has(name)) return;                       // recursion guard
+    const repo = event.manager.getRepository(DomainEvent); // SAME transaction
     await repo.insert({
-      id: `evt_${ulid()}`,                                // stable id → consumer dedupe
-      type: `${toDomain(name)}.${action}`,                // e.g. "order.created"
-      payload: serialize(event.entity),                   // map at the boundary (Step 4)
+      type: `${toDomain(name)}.${action}`,                 // e.g. "order.created"
+      payload: serialize(event.entity),                    // generated code calls DomainEventMapper here (Step 4/7)
       status: 'pending',
       attempts: 0,
-    });
+    });                                                    // uuid PK is auto-generated → consumer dedupe key
   }
 
   afterInsert(e: InsertEvent<any>) { return this.emit(e, 'created'); }
@@ -97,21 +107,22 @@ export class OutboxSubscriber implements EntitySubscriberInterface {
 ```
 
 ```typescript
-@Entity()
-export class OutboxEvent {
-  @PrimaryColumn() id: string;              // "evt_…" — stable, dedupe key
-  @Column() type: string;                   // "domain.entity.action"
+@Entity('events')
+@Index(['status', 'created_at'])            // relay polling hot path
+export class DomainEvent {
+  @PrimaryGeneratedColumn('uuid') id: string;  // stable id → consumer dedupe key
+  @Column() type: string;                      // "domain.entity.action"
   @Column('jsonb') payload: unknown;
   @Column({ default: 'pending' }) status: 'pending' | 'published' | 'failed';
   @Column({ default: 0 }) attempts: number;
-  @CreateDateColumn() created_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
   @Column({ type: 'timestamptz', nullable: true }) publishedAt: Date | null;
 }
 ```
 
 **Critical caveats:**
-- The subscriber **must skip its own tables** (outbox, idempotency) — otherwise writing an
-  event triggers an event triggers an event.
+- The subscriber **must skip its own table** (`DomainEvent`) and any idempotency/bookkeeping
+  tables — otherwise writing an event triggers an event triggers an event.
 - Raw `QueryBuilder` `.update()` / `.delete()` and bulk operations **bypass subscribers**.
   Any code path that must emit events has to go through the entity manager, or emit
   explicitly. Document this loudly.
@@ -166,19 +177,52 @@ extension layer.
 - Document the raw-query bypass (Step 2).
 - Treat the outbox as append-mostly; index `(status, created_at)` for the relay's hot query.
 
-### Step 7: Use the generated capability (once available)
+### Step 7: Use the generated capability (TypeScript)
 
-[apsoai/cli#79](https://github.com/apsoai/cli/issues/79) proposes generating this spine
-from `.apsorc`:
+As of [apsoai/cli#80](https://github.com/apsoai/cli/pull/80) the spine is **generated** for
+the TypeScript target — opt in via `.apsorc` instead of hand-rolling:
 
 ```jsonc
-{ "name": "Order", "emitEvents": true }   // generator emits outbox + EntitySubscriber + relay stub
+{
+  "emitEvents": true,                                // global default (optional)
+  "entities": [
+    { "name": "Order", "fields": [/* … */] },        // inherits global → emits
+    { "name": "AuditLog", "emitEvents": false }       // per-entity opt-out
+  ]
+}
 ```
 
-When it lands, the **generator owns the mechanism** (outbox table, lifecycle subscriber,
-relay scaffold) and **you supply the contract** via extension hooks: the type taxonomy, the
-payload serializer (Step 4), and the delivery (Step 5). Until then, hand-roll the spine as
-above — the design decisions are identical, so the work carries over.
+Effective value per entity = `entity.emitEvents ?? <top-level emitEvents> ?? false` — a
+global default with per-entity opt-out.
+
+When ≥1 entity opts in, the generator writes to `autogen/events/`:
+
+- **`DomainEvent` entity (table `events`) + `DomainEventSubscriber`** — the durable,
+  same-transaction, recursion-guarded spine from Step 2. uuid PK is the dedupe key;
+  `@Index(['status','created_at'])` backs the relay poll.
+- **`DomainEventMapper`** — *the extension point for your contract.* A DI token with a
+  `DefaultDomainEventMapper` (`entity.action` taxonomy, entity-as-payload). Set your
+  taxonomy and public payload shape (Step 4) by **re-providing the token** — don't edit
+  `autogen/`.
+- **`DomainEventRelay`** — `processPending()` drains pending rows with retry / `MAX_ATTEMPTS`
+  / failed-state; **`publish()` is the extension point for delivery (Step 5)** and *throws
+  until you override it* for webhooks / Kafka / SNS / a bus.
+- **`DomainEventsModule`** (`@Global()`) wires it together.
+
+So the division of labor is: **the generator owns the mechanism; you own the contract.**
+Concretely, your work is two overrides — the **mapper** (taxonomy + payload) and the relay's
+**`publish()`** (delivery). Steps 2–5 are now about *customizing* these, not building them.
+
+**Still your job — the generator punts these by design:**
+- **Semantic events (Step 3)** — explicit emits for business transitions; write to the same
+  `DomainEvent` via the active transaction's manager.
+- **Raw `QueryBuilder` / bulk** updates and deletes **bypass the subscriber (Step 2)** — emit
+  explicitly on those paths.
+- **Multiple DataSources** — register `DomainEventsModule` per DataSource (the subscriber
+  auto-registers on the default DataSource; named ones need wiring).
+
+For stacks without generation yet — **Python (#3)**, **Go (#4)** — hand-roll the spine per
+Steps 2–5; the design decisions are identical, only the same-txn hook idiom differs.
 
 ## Quick Reference
 
@@ -191,7 +235,7 @@ above — the design decisions are identical, so the work carries over.
 
 ## Related Work
 
-- **apsoai/cli#79** — generated `emitEvents` capability (the mechanism this skill teaches you to drive).
+- **apsoai/cli#79 → #80** — the generated `emitEvents` capability (the mechanism this skill drives). **Merged for the TypeScript target** in [cli#80](https://github.com/apsoai/cli/pull/80): emits `DomainEvent` / `DomainEventSubscriber` / `DomainEventMapper` / `DomainEventRelay` into `autogen/events/`.
 - **Python / SQLAlchemy** realization — tracked separately ([apsoai/skills#3](https://github.com/apsoai/skills/issues/3)); same-txn hook via session/mapper event listeners.
 - **Go / GORM** realization — tracked separately ([apsoai/skills#4](https://github.com/apsoai/skills/issues/4)); same-txn hook via model hooks.
 
