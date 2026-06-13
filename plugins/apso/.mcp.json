@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "apso": {
+      "command": "npx",
+      "args": ["@apso/cli", "mcp", "serve"],
+      "description": "Design schemas, generate APIs, and deploy backends from natural language."
+    }
+  }
+}

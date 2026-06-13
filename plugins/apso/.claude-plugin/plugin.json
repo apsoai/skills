@@ -1,0 +1,22 @@
+{
+  "name": "apso",
+  "displayName": "Apso",
+  "version": "0.1.0",
+  "description": "Database schema design patterns, REST API generation, and backend deployment. Describe what your application manages and get a validated schema and production-ready API.",
+  "author": {
+    "name": "Apso",
+    "url": "https://apso.dev"
+  },
+  "homepage": "https://apso.dev",
+  "repository": "https://github.com/apsoai/skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "api",
+    "database",
+    "schema",
+    "backend",
+    "rest-api",
+    "deployment",
+    "mcp"
+  ]
+}
