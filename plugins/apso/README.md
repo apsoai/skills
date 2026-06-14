@@ -36,6 +36,7 @@ claude mcp add apso -- npx @apso/cli mcp serve
 | **file-storage** | File uploads, attachments, and media references |
 | **workflow-state** | State machines, approval chains, pipeline stages |
 | **tagging-taxonomy** | Tags, categories, and faceted classification |
+| **domain-events** | Reliable event emission — transactional outbox, lifecycle + semantic events, delivery |
 
 ### API Building
 
