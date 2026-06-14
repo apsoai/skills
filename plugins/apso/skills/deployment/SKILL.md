@@ -1,5 +1,6 @@
 ---
 name: deployment
+category: uncategorized
 description: Deploy an API to production. Handles build, database migration, and infrastructure provisioning on AWS. Triggers on "deploy", "deploy to production", "ship it", "go live", "deploy the API", "deploy the backend".
 ---
 

@@ -1,5 +1,6 @@
 ---
 name: schema-designer
+category: data
 description: Design a database schema from application requirements. Takes entity descriptions, relationships, and business rules and produces a validated schema definition. Triggers on "design schema", "create data model", "define entities", "plan database".
 ---
 

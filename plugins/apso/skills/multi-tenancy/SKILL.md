@@ -1,5 +1,6 @@
 ---
 name: multi-tenancy
+category: data
 description: Add multi-tenant data isolation to a schema. Configures scopeBy to automatically filter queries by organization, workspace, or team. Triggers on "add multi-tenancy", "tenant isolation", "scope by organization", "data isolation".
 ---
 

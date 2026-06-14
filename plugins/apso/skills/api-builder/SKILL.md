@@ -1,5 +1,6 @@
 ---
 name: api-builder
+category: api
 description: Generate a production-ready REST API from a schema. Creates endpoints, models, validation, DTOs, and OpenAPI docs. Triggers on "build the API", "scaffold the backend", "generate the server", "create REST API", "set up the backend".
 ---
 

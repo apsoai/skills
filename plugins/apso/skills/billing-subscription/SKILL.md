@@ -1,5 +1,6 @@
 ---
 name: billing-subscription
+category: uncategorized
 description: Add billing and subscription entities to a schema. Stripe-compatible plans, subscriptions, invoices, payment methods, and usage tracking. Triggers on "add billing", "subscription schema", "payment entities", "Stripe integration", "pricing plans", "usage tracking".
 ---
 

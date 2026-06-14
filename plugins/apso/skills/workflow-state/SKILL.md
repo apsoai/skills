@@ -1,5 +1,6 @@
 ---
 name: workflow-state
+category: data
 description: Add state machine and workflow entities to a schema. Status transitions, approval chains, and pipeline stages. Triggers on "state machine", "workflow", "status transitions", "approval process", "pipeline stages", "kanban".
 ---
 

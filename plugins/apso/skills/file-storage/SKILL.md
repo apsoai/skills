@@ -1,5 +1,6 @@
 ---
 name: file-storage
+category: integrations
 description: Add file upload and attachment entities to a schema. S3 references, metadata, thumbnails, and file associations. Triggers on "file uploads", "attachments", "media storage", "image uploads", "document storage".
 ---
 

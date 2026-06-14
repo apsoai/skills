@@ -1,5 +1,6 @@
 ---
 name: soft-delete
+category: data
 description: Add soft delete patterns to a schema. Records are marked as deleted rather than removed, supporting undo, audit trails, and data retention. Triggers on "soft delete", "archive records", "undo delete", "data retention", "trash".
 ---
 

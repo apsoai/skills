@@ -1,6 +1,7 @@
 ---
 name: domain-events
-description: Add reliable event emission to a service — transactional outbox, CRUD-lifecycle events, semantic transition events, and delivery. Triggers on "emit events", "event triggering", "domain events", "publish events on change", "transactional outbox", "webhook events", "no silent writes".
+category: integrations
+description: Add reliable event emission to a service — transactional outbox, CRUD-lifecycle events, semantic transition events, and config-selected delivery (webhook/Kafka/SQS/EventBridge). Installs and wires the @apso/domain-events library. Triggers on "emit events", "event triggering", "domain events", "publish events on change", "transactional outbox", "webhook events", "no silent writes".
 ---
 
 # Domain Events
@@ -11,22 +12,27 @@ Add reliable event emission to an Apso service. The goal is one invariant:
 Getting this right is mostly about *durability* (the event must not be lost if the
 process dies) and *taste* (which events to emit, and what shape they take). This skill
 covers both. The mechanism is language-agnostic; the worked example is TypeScript /
-TypeORM (the reference Apso target). Python/SQLAlchemy and Go/GORM are tracked
-separately — see Related Work.
+TypeORM (the reference Apso target). Python/SQLAlchemy and Go/GORM mirror it — see Related Work.
 
-> **For TypeScript, the durable spine is now generated.** Opting an entity into
-> `emitEvents` makes the generator emit the `DomainEvent` entity, subscriber, mapper, and
-> relay for you (shipped in [apsoai/cli#80](https://github.com/apsoai/cli/pull/80)). So on
-> TS your job shifts from *building* the spine to *customizing* its two extension points —
-> see **Step 7**. Steps 2–5 below are the conceptual model (and the hand-roll path for
-> stacks without generation yet).
+> **The durable spine + delivery is a LIBRARY, not generated code.** The engine ships as
+> [`@apso/domain-events`](https://github.com/apsoai/apso-packages) (per the [Apso Distribution
+> Model](../../references/architecture/distribution-model.md)). Opting an entity into
+> `emitEvents` in `.apsorc` makes the CLI emit a tiny **manifest** of opted-in entities
+> (`autogen/events/event-emitting.entities.ts`); you `npm install @apso/domain-events` and
+> wire `DomainEventsModule.forRoot({ entities })`. **This skill installs + wires the library
+> — it never reimplements the engine** (the library is the consistency anchor). Your job is
+> the *contract* (the mapper) and *semantic* events; delivery is env config. Steps 2–5 are the
+> conceptual model behind the library — read them to understand it; Step 7 is what you actually do.
 
 ## What You Get
 
 A service where:
 - Every create/update/delete on an opted-in entity writes a durable event **in the same
   database transaction** as the state change (the transactional-outbox pattern).
-- A relay publishes those events after commit, **at-least-once**, with retry/backoff.
+- A relay publishes those events after commit, **at-least-once**, with retry/backoff, on a
+  self-contained schedule (no extra scheduler dependency).
+- Delivery is selected at runtime (`EVENTS_DESTINATION`): webhook (Standard Webhooks signed),
+  Kafka, SQS, or EventBridge — fan out to several at once.
 - Consumers can **dedupe** on a stable event id.
 - Mechanical CRUD events (`product.created`) and explicit semantic events
   (`payment_intent.succeeded`) both flow through the same durable spine.
@@ -43,9 +49,9 @@ publish("order.fulfilled")   ← never runs. Event lost. State changed silently.
 ```
 
 For a ledger, payments, or any audit-critical system this is unacceptable. The fix is the
-**transactional outbox**: write the event into an `outbox` table **inside the same
+**transactional outbox**: write the event into an `events` table **inside the same
 transaction** as the state change. Either both land or neither does. A separate relay
-reads the outbox and publishes after commit. Delivery is now decoupled from the write and
+reads the table and publishes after commit. Delivery is now decoupled from the write and
 can retry safely.
 
 ```
@@ -68,41 +74,35 @@ Two ways to emit, with different guarantees:
 | **ORM lifecycle subscriber** (TypeORM `EntitySubscriber`) | **Yes** — hooks receive the active transaction's manager | No | The durable spine — CRUD-lifecycle events |
 | **Post-commit HTTP interceptor** | No (fires at request boundary, after commit) | Yes (user, request id) | Enrichment only, when you accept the durability gap |
 
-**Default to the subscriber for durability.** Use an interceptor only when you genuinely
-need request context *and* can tolerate the dual-write gap (rare for event-critical data).
+**Default to the subscriber for durability** (this is what the library uses). Use an
+interceptor only when you genuinely need request context *and* can tolerate the dual-write
+gap (rare for event-critical data).
 
-### Step 2: Write the outbox + same-transaction subscriber
+### Step 2: The outbox + same-transaction subscriber (what the library does)
 
 The subscriber's `afterInsert` / `afterUpdate` / `afterRemove` hooks receive
 `event.manager` — the manager bound to the *active transaction*. Writing the outbox row
 through it is same-txn, atomic with the state change.
 
-This mirrors exactly what Apso generates into `autogen/events/` for the TypeScript target
-(Step 7) — names and all. Read it as the conceptual model, and as the spine you hand-roll
-for stacks without generation yet (Python #3, Go #4).
+This is exactly what `@apso/domain-events` implements (you don't write it — read it as the
+conceptual model):
 
 ```typescript
-// extension layer — survives `apso generate`
+// Inside @apso/domain-events — shown for understanding, NOT to hand-copy.
 @EventSubscriber()
 export class DomainEventSubscriber implements EntitySubscriberInterface {
-  // Skip our own table or we recurse forever. Add any idempotency/bookkeeping tables too.
-  private readonly skip = new Set(['DomainEvent']);
-
+  // Skip the outbox table or we recurse forever; only opted-in entities emit.
   private async emit(event: InsertEvent<any> | UpdateEvent<any> | RemoveEvent<any>, action: string) {
     const name = event.metadata.name;
-    if (this.skip.has(name)) return;                       // recursion guard
-    const repo = event.manager.getRepository(DomainEvent); // SAME transaction
+    if (name === 'DomainEvent' || !this.isEmitting(name)) return;   // recursion guard + scope
+    const repo = event.manager.getRepository(DomainEvent);          // SAME transaction
     await repo.insert({
-      type: `${toDomain(name)}.${action}`,                 // e.g. "order.created"
-      payload: serialize(event.entity),                    // generated code calls DomainEventMapper here (Step 4/7)
+      type: this.mapper.eventType(name, action),                   // overridable mapper
+      payload: this.mapper.toPayload(event.entity, action),
       status: 'pending',
       attempts: 0,
-    });                                                    // uuid PK is auto-generated → consumer dedupe key
+    });                                                             // uuid PK → consumer dedupe key
   }
-
-  afterInsert(e: InsertEvent<any>) { return this.emit(e, 'created'); }
-  afterUpdate(e: UpdateEvent<any>) { return this.emit(e, 'updated'); }
-  afterRemove(e: RemoveEvent<any>) { return this.emit(e, 'deleted'); }
 }
 ```
 
@@ -120,13 +120,14 @@ export class DomainEvent {
 }
 ```
 
-**Critical caveats:**
-- The subscriber **must skip its own table** (`DomainEvent`) and any idempotency/bookkeeping
-  tables — otherwise writing an event triggers an event triggers an event.
+**Critical caveats (the library handles the first two; you own the rest):**
+- The subscriber **skips the `events` table** and only fires for entities you opted in —
+  no infinite recursion.
 - Raw `QueryBuilder` `.update()` / `.delete()` and bulk operations **bypass subscribers**.
   Any code path that must emit events has to go through the entity manager, or emit
   explicitly. Document this loudly.
-- Register the subscriber **per DataSource** if the service has multiple.
+- Register `DomainEventsModule` **per DataSource** if the service has multiple (the
+  subscriber auto-registers on the default DataSource; named ones need wiring).
 
 ### Step 3: Distinguish lifecycle events from semantic events
 
@@ -136,108 +137,107 @@ Not every meaningful event maps to a CRUD verb.
   `user.updated`. The subscriber emits these automatically. Cheap, complete, low-meaning.
 - **Semantic (transition):** business-meaningful transitions that don't map 1:1 to a verb
   — `payment_intent.succeeded`, `order.fulfilled`, `subscription.canceled`. A row UPDATE
-  can't tell you *which* transition happened. **Emit these explicitly** from the extension
-  layer (your service/use-case code), writing to the **same outbox** through the active
+  can't tell you *which* transition happened. **Emit these explicitly** from your
+  service/use-case code, writing to the **same `events` table** through the active
   transaction's manager.
 
 Rule of thumb: if a consumer cares about *the meaning of the change* (not just "the row
 changed"), it's a semantic event and you emit it by hand.
 
-### Step 4: Design the taxonomy and envelope
+### Step 4: Design the taxonomy and envelope (your contract — override the mapper)
 
 - **Naming:** `domain.entity.action` (e.g. `billing.invoice.paid`). Consistent, filterable,
   greppable.
-- **Stable ids:** prefix + sortable id (`evt_01J…`). Consumers dedupe on this under
-  at-least-once delivery.
-- **A canonical envelope** wraps every event: `{ id, type, occurredAt, version, data }`.
-- **Map at the boundary.** Do **not** publish your internal entity shape or a vendor's
-  shape (e.g. Stripe objects) directly — that couples every consumer to your internals.
-  Build the public `data` payload in a serializer at the emission point. The envelope is
-  your contract; the table is not.
+- **Stable ids:** the `events.id` uuid. Consumers dedupe on it under at-least-once delivery.
+- **Map at the boundary.** Do **not** publish your internal entity shape or a vendor's shape
+  (e.g. Stripe objects) directly — that couples every consumer to your internals. Set the
+  public type taxonomy and payload by **providing your own `DomainEventMapper`** under the
+  `DOMAIN_EVENT_MAPPER` token (the default uses `entity.action` + the entity as-is). The
+  mapper is your contract; the table is not.
 
-### Step 5: Build the relay
+### Step 5: Delivery (config, not code)
 
-A background worker (cron, queue consumer, or `LISTEN/NOTIFY` loop) that:
-1. Selects `status='pending'` rows (oldest first, batched, `FOR UPDATE SKIP LOCKED` to
-   allow concurrent relays).
-2. Publishes each (webhook POST, message bus, etc.).
-3. On success → `status='published'`, set `publishedAt`. On failure → increment `attempts`,
-   keep `pending` with backoff, move to `failed` past a threshold (dead-letter).
-4. Is **idempotent on redelivery** — at-least-once means consumers will occasionally see
-   duplicates; the stable event id is how they cope.
+The library's `DomainEventRelay` drains `status='pending'` rows on a self-contained poller
+and fans each out to the **active destinations**, selected at runtime:
+- `EVENTS_DESTINATION=webhook` (Standard Webhooks HMAC-signed POST to `EVENTS_WEBHOOK_URL`),
+  `kafka`, `sqs`, `eventbridge`, or a comma-list to fan out.
+- On success → `published` + `publishedAt`; on failure → `attempts++`, then `failed` past
+  `MAX_ATTEMPTS`.
+- **At-least-once, and with multiple destinations the relay re-sends to all on retry — so
+  consumers MUST dedupe on `event.id`.**
 
-Delivery specifics (signing, endpoints, retry policy) are app-specific — keep them in the
-extension layer.
+You normally don't write delivery code — pick a destination via env and set its vars. You
+*can* override the mapper for payload/type, and (rarely) subclass the relay.
 
-### Step 6: Placement & safety (so it survives regeneration)
+### Step 6: Where things live
 
-- Keep the subscriber, semantic emits, serializers, and relay in the **extension layer**,
-  not in `autogen/` — so `apso generate` never overwrites your event logic.
-- Recursion guard on bookkeeping tables (Step 2). 
-- Document the raw-query bypass (Step 2).
-- Treat the outbox as append-mostly; index `(status, created_at)` for the relay's hot query.
+- The **engine** (subscriber, relay, adapters, poller) lives in `@apso/domain-events`
+  (node_modules) — updated via `npm update`, not regeneration.
+- The CLI generates only the **manifest** (`autogen/events/event-emitting.entities.ts`) from
+  your `.apsorc` `emitEvents` flags.
+- **Your code** owns: the `forRoot(...)` wiring, the mapper override (contract), explicit
+  semantic emits, and env config. None of it is overwritten by `apso generate`.
 
-### Step 7: Use the generated capability (TypeScript)
+### Step 7: Wire it up (TypeScript)
 
-As of [apsoai/cli#80](https://github.com/apsoai/cli/pull/80) the spine is **generated** for
-the TypeScript target — opt in via `.apsorc` instead of hand-rolling:
+1. **Signal in `.apsorc`** — opt entities in:
+   ```jsonc
+   {
+     "emitEvents": true,                          // global default (optional)
+     "entities": [
+       { "name": "Order", "fields": [/* … */] },  // inherits global → emits
+       { "name": "AuditLog", "emitEvents": false } // per-entity opt-out
+     ]
+   }
+   ```
+   Effective per entity = `entity.emitEvents ?? <top-level emitEvents> ?? false`.
 
-```jsonc
-{
-  "emitEvents": true,                                // global default (optional)
-  "entities": [
-    { "name": "Order", "fields": [/* … */] },        // inherits global → emits
-    { "name": "AuditLog", "emitEvents": false }       // per-entity opt-out
-  ]
-}
-```
+2. **Generate the manifest** — `apso generate` writes `src/autogen/events/event-emitting.entities.ts`
+   exporting `EVENT_EMITTING_ENTITIES` (the opted-in entity classes). No engine code is generated.
 
-Effective value per entity = `entity.emitEvents ?? <top-level emitEvents> ?? false` — a
-global default with per-entity opt-out.
+3. **Install the library** — `npm install @apso/domain-events` (pin the version).
 
-When ≥1 entity opts in, the generator writes to `autogen/events/`:
+4. **Wire it** — in your app module:
+   ```typescript
+   import { DomainEventsModule } from '@apso/domain-events';
+   import { EVENT_EMITTING_ENTITIES } from './autogen/events/event-emitting.entities';
 
-- **`DomainEvent` entity (table `events`) + `DomainEventSubscriber`** — the durable,
-  same-transaction, recursion-guarded spine from Step 2. uuid PK is the dedupe key;
-  `@Index(['status','created_at'])` backs the relay poll.
-- **`DomainEventMapper`** — *the extension point for your contract.* A DI token with a
-  `DefaultDomainEventMapper` (`entity.action` taxonomy, entity-as-payload). Set your
-  taxonomy and public payload shape (Step 4) by **re-providing the token** — don't edit
-  `autogen/`.
-- **`DomainEventRelay`** — `processPending()` drains pending rows with retry / `MAX_ATTEMPTS`
-  / failed-state; **`publish()` is the extension point for delivery (Step 5)** and *throws
-  until you override it* for webhooks / Kafka / SNS / a bus.
-- **`DomainEventsModule`** (`@Global()`) wires it together.
+   @Module({
+     imports: [
+       DomainEventsModule.forRoot({ entities: EVENT_EMITTING_ENTITIES }),
+       // … your other modules
+     ],
+   })
+   export class AppModule {}
+   ```
+   Optionally pass `{ mapper: MyMapper, pollIntervalMs: 5000 }`.
 
-So the division of labor is: **the generator owns the mechanism; you own the contract.**
-Concretely, your work is two overrides — the **mapper** (taxonomy + payload) and the relay's
-**`publish()`** (delivery). Steps 2–5 are now about *customizing* these, not building them.
+5. **Configure delivery (env)** — e.g. `EVENTS_DESTINATION=webhook`, `EVENTS_WEBHOOK_URL=…`,
+   `EVENTS_WEBHOOK_SECRET=whsec_…` (webhook needs no extra dependency; Kafka/SQS/EventBridge
+   pull their client lib only when activated).
 
-**Still your job — the generator punts these by design:**
-- **Semantic events (Step 3)** — explicit emits for business transitions; write to the same
-  `DomainEvent` via the active transaction's manager.
-- **Raw `QueryBuilder` / bulk** updates and deletes **bypass the subscriber (Step 2)** — emit
-  explicitly on those paths.
-- **Multiple DataSources** — register `DomainEventsModule` per DataSource (the subscriber
-  auto-registers on the default DataSource; named ones need wiring).
+6. **Customize the contract** — provide your own `DomainEventMapper` (Step 4) and emit
+   **semantic events** (Step 3) from business code via the active transaction's manager.
 
-For stacks without generation yet — **Python (#3)**, **Go (#4)** — hand-roll the spine per
-Steps 2–5; the design decisions are identical, only the same-txn hook idiom differs.
+**Division of labor: the library owns the mechanism + transports; you own the contract and
+the semantic events.**
 
 ## Quick Reference
 
-- **Durability lever:** write the event in the *same transaction* as the state change. Everything else is secondary.
-- **Subscriber for lifecycle, explicit emits for semantic** — both to the same outbox.
-- **Stable event id** → consumer dedupe (delivery is at-least-once).
-- **Map to a public envelope** — never leak internal/vendor shapes.
-- **Guard against recursion** (skip outbox/idempotency tables) and **document the raw-query bypass**.
-- **Extension layer**, so it survives `apso generate`.
+- **Durability lever:** events are written in the *same transaction* as the state change. The library guarantees this; everything else is secondary.
+- **Subscriber for lifecycle, explicit emits for semantic** — both to the same `events` table.
+- **Stable event id** → consumer dedupe (delivery is at-least-once; multi-destination amplifies duplicates).
+- **Override the mapper** to set your public taxonomy + payload — never leak internal/vendor shapes.
+- **Delivery is env config** (`EVENTS_DESTINATION`), not code.
+- **Document the raw-query bypass**; register per DataSource if multiple.
+- **Install + wire the library — never hand-reimplement the engine.**
 
 ## Related Work
 
-- **apsoai/cli#79 → #80** — the generated `emitEvents` capability (the mechanism this skill drives). **Merged for the TypeScript target** in [cli#80](https://github.com/apsoai/cli/pull/80): emits `DomainEvent` / `DomainEventSubscriber` / `DomainEventMapper` / `DomainEventRelay` into `autogen/events/`.
-- **Python / SQLAlchemy** realization — tracked separately ([apsoai/skills#3](https://github.com/apsoai/skills/issues/3)); same-txn hook via session/mapper event listeners.
-- **Go / GORM** realization — tracked separately ([apsoai/skills#4](https://github.com/apsoai/skills/issues/4)); same-txn hook via model hooks.
+- **`@apso/domain-events`** (TypeScript) — the engine this skill installs: [apsoai/apso-packages](https://github.com/apsoai/apso-packages) (`typescript/packages/domain-events`).
+- **CLI manifest** — `apso generate` emits `EVENT_EMITTING_ENTITIES` instead of the engine ([apsoai/cli#91](https://github.com/apsoai/cli/issues/91)). Supersedes the earlier generated-engine approach (cli#79/#80).
+- **Python / SQLAlchemy** and **Go / GORM** — sibling libraries in the same monorepo (`python/packages/domain-events`, `go/domainevents`); same contract, language-idiomatic same-txn hooks. Tracked at apsoai/cli#81 / #82.
+- Architecture rationale: [Apso Distribution Model](../../references/architecture/distribution-model.md).
 
 ## Related Skills
 

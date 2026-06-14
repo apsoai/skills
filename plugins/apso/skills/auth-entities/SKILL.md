@@ -1,5 +1,6 @@
 ---
 name: auth-entities
+category: auth
 description: Add authentication entities to a schema. Defines users, accounts, sessions, verification tokens, roles, and permissions. Triggers on "add auth entities", "user authentication schema", "roles and permissions", "RBAC schema".
 ---
 

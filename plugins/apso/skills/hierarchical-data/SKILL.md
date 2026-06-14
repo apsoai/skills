@@ -1,5 +1,6 @@
 ---
 name: hierarchical-data
+category: data
 description: Model tree structures and hierarchies in a schema. Covers parent-child relationships, categories, org charts, nested comments, and folder structures. Triggers on "tree structure", "parent child", "nested categories", "hierarchy", "folder structure", "org chart".
 ---
 

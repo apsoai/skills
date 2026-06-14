@@ -1,5 +1,6 @@
 ---
 name: audit-trail
+category: data
 description: Add audit logging and change tracking to a schema. Tracks who created, updated, or deleted records and maintains a change history. Triggers on "add audit trail", "track changes", "who changed what", "change history", "activity log".
 ---
 

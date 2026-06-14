@@ -1,5 +1,6 @@
 ---
 name: tagging-taxonomy
+category: data
 description: Add tags, categories, and taxonomy entities to a schema. Flat tags, hierarchical categories, and faceted classification. Triggers on "add tags", "categories", "taxonomy", "labels", "tagging system", "classification".
 ---
 

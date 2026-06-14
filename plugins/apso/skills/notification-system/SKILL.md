@@ -1,5 +1,6 @@
 ---
 name: notification-system
+category: integrations
 description: Add notification entities to a schema. In-app notifications, email digests, delivery preferences, and read/unread tracking. Triggers on "add notifications", "notification schema", "in-app notifications", "alert system", "notification preferences".
 ---
 
