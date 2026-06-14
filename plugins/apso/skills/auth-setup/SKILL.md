@@ -1,5 +1,6 @@
 ---
 name: auth-setup
+category: auth
 description: Add authentication and multi-tenancy to an API. Configures user management, sessions, and organization-scoped data isolation. Triggers on "add authentication", "set up auth", "add login", "add sign up", "configure BetterAuth".
 ---
 

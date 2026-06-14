@@ -1,5 +1,6 @@
 ---
 name: custom-endpoints
+category: api
 description: Add custom business logic endpoints beyond generated CRUD. Extension controllers, services, middleware, and interceptors. Triggers on "add custom endpoint", "business logic", "custom API route", "extend the API", "add webhook".
 ---
 
