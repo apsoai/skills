@@ -40,6 +40,12 @@ When adding a capability, ask in order:
 
 A developer updates the delivery engine with `npm update @apso/domain-events` — not by re-cloning a template and not by hoping a regenerate picks it up.
 
+## `.apsorc` is the feature-control plane
+
+`.apsorc` doesn't just describe the data model — it's where the developer **signals intent**, and that intent drives both codegen *and* which libraries/skills get wired in (`scopeBy` → tenant scoping; `emitEvents` → which entities emit domain events, pulling in `@apso/domain-events` + the `domain-events` skill).
+
+For a **library feature**, the CLI's job is small and purely schema-derived: from the `.apsorc` signal it emits a **manifest** (e.g. the list of opted-in entity classes) that the library consumes — `DomainEventsModule.forRoot({ entities })`. Engine in the library, wiring in the skill, on-switch in `.apsorc`. The flags are feature toggles, not implementations.
+
 ## What this means for contributors
 
 - New cross-cutting capability → **library + skill**, not new CLI codegen.
