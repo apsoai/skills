@@ -18,7 +18,7 @@ TypeORM (the reference Apso target). Python/SQLAlchemy and Go/GORM mirror it —
 > [`@apso/domain-events`](https://github.com/apsoai/apso-packages) (per the [Apso Distribution
 > Model](../../references/architecture/distribution-model.md)). Opting an entity into
 > `emitEvents` in `.apsorc` makes the CLI emit a tiny **manifest** of opted-in entities
-> (`autogen/events/event-emitting.entities.ts`); you `npm install @apso/domain-events` and
+> (`autogen/events/event-emitting.entities.ts`); you `npm install @apso/domain-events@^0.1.0` and
 > wire `DomainEventsModule.forRoot({ entities })`. **This skill installs + wires the library
 > — it never reimplements the engine** (the library is the consistency anchor). Your job is
 > the *contract* (the mapper) and *semantic* events; delivery is env config. Steps 2–5 are the
@@ -195,7 +195,7 @@ You normally don't write delivery code — pick a destination via env and set it
 2. **Generate the manifest** — `apso generate` writes `src/autogen/events/event-emitting.entities.ts`
    exporting `EVENT_EMITTING_ENTITIES` (the opted-in entity classes). No engine code is generated.
 
-3. **Install the library** — `npm install @apso/domain-events` (pin the version).
+3. **Install the library** — `npm install @apso/domain-events@^0.1.0` (current published version; the caret takes patch releases).
 
 4. **Wire it** — in your app module:
    ```typescript
