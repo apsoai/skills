@@ -1,7 +1,7 @@
 ---
 name: custom-endpoints
 category: api
-description: Add custom business logic endpoints beyond generated CRUD. Extension controllers, services, middleware, and interceptors. Triggers on "add custom endpoint", "business logic", "custom API route", "extend the API", "add webhook".
+description: Add custom business logic endpoints beyond generated CRUD, or replace a generated endpoint with a hand-written one. Extension controllers, services, middleware, and interceptors. Triggers on "add custom endpoint", "business logic", "custom API route", "extend the API", "add webhook", "replace generated endpoint", "override CRUD", "custom controller", "Stripe-shaped API".
 ---
 
 # Custom Endpoints
@@ -175,6 +175,30 @@ async createProjectTask(
   return this.taskRepo.save({ ...body, projectId });
 }
 ```
+
+## Replacing a generated endpoint (not just adding)
+
+The patterns above are *additive* — new routes alongside the generated CRUD. To
+**replace** an entity's generated endpoint with your own shape (custom envelope,
+Stripe-style prefixed ids, idempotency), the approach depends on the framework,
+because some can override a route in place and some can't:
+
+- **NestJS (TypeScript):** set `"http": false` on the entity in `.apsorc` and
+  regenerate. The generator still emits the entity, service, DTOs, and module
+  (repository + service stay wired) but **omits the controller**, so your
+  hand-written controller owns the route with no collision. NestJS controllers
+  aren't DI-swappable and Express resolves a same-path collision by registration
+  order, so suppression is the supported path.
+- **FastAPI (Python):** no flag needed — FastAPI matches routes in **registration
+  order**. Register your `APIRouter` for the path **before** the generated
+  `autogen_router` is included in `main.py`, and yours wins. (`http: false` is a
+  no-op here.)
+- **Gin (Go):** Gin **panics** on a duplicate method+path, so you can't override
+  by re-registering. Suppress the generated route with `"http": false`
+  (tracked in apsoai/cli#95) and register your own.
+
+Rule of thumb: **add** with the patterns above; **replace** by suppressing the
+generated controller (NestJS / Gin) or by registration order (FastAPI).
 
 ## Extension Structure
 
