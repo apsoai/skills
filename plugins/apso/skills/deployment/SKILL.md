@@ -44,6 +44,11 @@ apso whoami
 Rules for headless callers:
 - Every workspace-scoped command needs a workspace — set it with `apso use <slug>`
   once, or pass `--workspace <slug>`. Use the workspace **slug**, not its name.
+- **Empty account (no workspaces):** workspaces are created in the web app, NOT the
+  CLI — there is no `apso workspace create`. If `apso use` / `apso projects` reports
+  no workspaces, stop and tell the user to create one at
+  `<web-app>/onboarding/workspace` (e.g. `https://app.apso.cloud/onboarding/workspace`),
+  then re-run `apso use`. Don't try to create it yourself.
 - `apso link --create <name>` creates a service; `--service <slug>` links an existing one.
 - `apso deploy --yes` skips the migration-count confirmation.
 - Plan-limit errors (e.g. free tier) come back as a plain error with an upgrade URL —
