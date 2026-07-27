@@ -8,6 +8,51 @@ description: Deploy an API to production. Handles build, database migration, and
 
 Deploy your API to production on AWS. Handles the build, database migration, and infrastructure provisioning.
 
+## Headless / agent usage (READ THIS IF YOU ARE AN AGENT)
+
+If an agent, script, or CI is driving the CLI, run **headless** — never rely on the
+interactive prompts shown later in this doc. Set `APSO_NONINTERACTIVE=1` (the CLI
+also auto-detects a non-TTY). In headless mode the CLI **never blocks on a prompt**:
+if a required value is missing it exits with an error naming the flag to pass, so
+you can retry deterministically.
+
+```bash
+export APSO_NONINTERACTIVE=1
+
+# Auth without a browser: use an API token (from the platform), not the OAuth flow
+apso login --token "$APSO_API_TOKEN"
+
+# Set the active workspace once (or pass --workspace <slug> to each command)
+apso use <workspace-slug>
+
+# In the project directory (a .apsorc must exist):
+apso generate -l typescript
+
+# Create + link a NEW service in one call:
+apso link --workspace <workspace-slug> --create <service-name>
+#   ...or link an EXISTING service:
+apso link --workspace <workspace-slug> --service <service-slug>
+
+# Deploy without the confirmation prompt:
+apso deploy --yes --no-wait
+
+# Machine-readable output for parsing:
+apso projects --json
+apso whoami
+```
+
+Rules for headless callers:
+- Every workspace-scoped command needs a workspace — set it with `apso use <slug>`
+  once, or pass `--workspace <slug>`. Use the workspace **slug**, not its name.
+- `apso link --create <name>` creates a service; `--service <slug>` links an existing one.
+- `apso deploy --yes` skips the migration-count confirmation.
+- Plan-limit errors (e.g. free tier) come back as a plain error with an upgrade URL —
+  the CLI will not open a browser in headless mode.
+- **GitHub connect is the one exception:** `apso github connect` is an interactive
+  browser OAuth an agent cannot complete. GitHub must be connected once by a human
+  (or via the GitHub App) before `apso deploy` can push. If it isn't, `apso deploy`
+  exits with "GitHub is not connected."
+
 ## Prerequisites
 
 - Working API locally (`apso dev` runs without errors)
