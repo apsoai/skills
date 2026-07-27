@@ -48,10 +48,35 @@ Rules for headless callers:
 - `apso deploy --yes` skips the migration-count confirmation.
 - Plan-limit errors (e.g. free tier) come back as a plain error with an upgrade URL —
   the CLI will not open a browser in headless mode.
-- **GitHub connect is the one exception:** `apso github connect` is an interactive
-  browser OAuth an agent cannot complete. GitHub must be connected once by a human
-  (or via the GitHub App) before `apso deploy` can push. If it isn't, `apso deploy`
-  exits with "GitHub is not connected."
+- **GitHub connect is the one interactive exception.** `apso github connect` is a
+  browser OAuth flow a machine can't complete, and it's the only step needing a
+  human. Handle it like this when driving headless:
+  1. Detect the need — `apso status` shows "GitHub: not connected", or `apso deploy`
+     exits with "GitHub is not connected."
+  2. **Tell the user** you need them to connect GitHub, then run the connect command
+     in an **interactive shell / sub-agent** (a real TTY, WITHOUT
+     `APSO_NONINTERACTIVE`) so the browser opens and the human completes it:
+     ```bash
+     apso github connect     # opens the browser; blocks until connected
+     ```
+  3. Once it returns, re-run `apso deploy --yes`. It stays connected afterward.
+
+  Interactive humans get this for free: running `apso deploy` when GitHub isn't
+  connected prompts "Connect now?" and launches the flow inline.
+
+## Human quickstart (interactive)
+
+For a person at a terminal, `apso init` is a guided wizard — run it from anywhere:
+
+```bash
+apso login              # browser OAuth
+apso use                # pick your workspace (interactive)
+apso init               # name, language, workspace -> scaffolds + creates + links a service
+cd <project>
+# edit .apsorc, then:
+apso generate
+apso deploy             # prompts to connect GitHub if needed, then ships
+```
 
 ## Prerequisites
 
