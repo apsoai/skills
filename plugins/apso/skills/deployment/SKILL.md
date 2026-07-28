@@ -33,7 +33,11 @@ apso link --workspace <workspace-slug> --create <service-name>
 #   ...or link an EXISTING service:
 apso link --workspace <workspace-slug> --service <service-slug>
 
-# Deploy without the confirmation prompt:
+# Deploy without the confirmation prompt.
+# deploy auto-creates the GitHub repo if the service has none, and pushes the
+# code THROUGH the user's Apso GitHub connection (no local git or `gh` needed —
+# a bare machine works with only `apso login` + a one-time GitHub connect).
+# Use --local-git to push with local git instead.
 apso deploy --yes --no-wait
 
 # Machine-readable output for parsing:
