@@ -8,7 +8,7 @@ Every shippable skill is assigned to exactly one of four locked categories. The 
 
 | Category | Purpose | Skills |
 |----------|---------|--------|
-| **data** | Schema design and data-modeling patterns | `schema-designer`, `multi-tenancy`, `hierarchical-data`, `tagging-taxonomy`, `soft-delete`, `audit-trail`, `workflow-state` |
+| **data** | Schema design and data-modeling patterns | `schema-designer`, `schema-review`, `multi-tenancy`, `hierarchical-data`, `tagging-taxonomy`, `soft-delete`, `audit-trail`, `workflow-state` |
 | **api** | Generating and extending the REST API surface | `api-builder`, `custom-endpoints` |
 | **auth** | Authentication and authorization | `auth-setup`, `auth-entities` |
 | **integrations** | Wiring the API to the outside world | `notification-system`, `file-storage`, `domain-events` |
