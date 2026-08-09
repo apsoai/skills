@@ -17,6 +17,10 @@ A `.apsorc` schema file with:
 - Composite indexes for query performance
 - Validation rules (unique, nullable, defaults, enums)
 
+## Design Principles
+
+I apply `references/data-modeling-principles.md` throughout — normalization (3NF), modeling interactions as **event entities not counters**, junction entities for many-to-many, and a deliberate indexing strategy for scale. For a deeper audit of an existing schema, use the `schema-review` skill.
+
 ## How I Work
 
 ### Step 1: Identify Entities
@@ -119,6 +123,7 @@ Read `references/apso-schema-guide.md` for the complete field type table, relati
 
 ## Related Skills
 
+- `schema-review` — Audit an existing schema for normalization, indexing, and scale
 - `multi-tenancy` — Patterns for tenant data isolation
 - `auth-entities` — Authentication entity patterns
 - `audit-trail` — Track who changed what and when

@@ -26,6 +26,7 @@ claude mcp add apso -- npx @apso/cli mcp serve
 | Skill | What it does |
 |-------|-------------|
 | **schema-designer** | Design a database schema from application requirements |
+| **schema-review** | Audit an existing schema for normalization, indexing, and scale |
 | **multi-tenancy** | Add tenant data isolation (organization-scoped queries) |
 | **auth-entities** | Authentication entities (users, sessions, roles, permissions) |
 | **audit-trail** | Track who changed what and when |
@@ -66,7 +67,7 @@ When connected as an MCP server, these tools are available:
 apso/
 ├── .claude-plugin/plugin.json   # Manifest
 ├── .mcp.json                    # Apso MCP server (connector)
-├── skills/                      # 15 schema + API skills
+├── skills/                      # 16 schema + API skills
 └── references/                  # Apso schema guide
 ```
 
