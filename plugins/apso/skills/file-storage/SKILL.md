@@ -6,51 +6,11 @@ description: Add file upload and attachment entities to a schema. S3 references,
 
 # File Storage Patterns
 
-Model file uploads, attachments, and media references. Files are stored in S3 (or compatible). The database tracks metadata and references.
+Model file uploads, attachments, and media references. Files are stored in S3 (or compatible). The database tracks metadata and a real foreign key to the record that owns each file.
 
-## Pattern 1: Generic Attachment
+## Pattern 1: Files Owned by One Entity Type
 
-A polymorphic attachment entity that can be linked to any other entity.
-
-```json
-{
-  "entities": [
-    {
-      "name": "Attachment",
-      "created_at": true,
-      "scopeBy": "organizationId",
-      "fields": [
-        { "name": "fileName", "type": "text", "length": 255 },
-        { "name": "fileKey", "type": "text", "length": 500 },
-        { "name": "fileUrl", "type": "text", "length": 1000 },
-        { "name": "mimeType", "type": "text", "length": 100 },
-        { "name": "fileSize", "type": "integer" },
-        { "name": "entityType", "type": "text", "length": 50 },
-        { "name": "entityId", "type": "text", "length": 50 },
-        { "name": "thumbnailUrl", "type": "text", "length": 1000, "nullable": true },
-        { "name": "metadata", "type": "json-plain", "nullable": true }
-      ],
-      "indexes": [
-        { "fields": ["entityType", "entityId"] },
-        { "fields": ["organizationId", "created_at"] }
-      ]
-    }
-  ],
-  "relationships": [
-    { "from": "Attachment", "to": "User", "type": "ManyToOne", "to_name": "uploadedBy" },
-    { "from": "Organization", "to": "Attachment", "type": "OneToMany" },
-    { "from": "Attachment", "to": "Organization", "type": "ManyToOne" }
-  ]
-}
-```
-
-`fileKey` is the S3 object key. `fileUrl` is the CDN or presigned URL. `entityType` + `entityId` link the attachment to any record (project, task, message, etc.).
-
-**When to use:** Apps where multiple entity types can have attachments. Avoids creating separate attachment tables per entity.
-
-## Pattern 2: Direct Relationship Attachments
-
-When files belong to a specific entity, use a direct relationship instead of polymorphic linking.
+When files belong to one kind of record, give the file entity a real foreign key to it. This is the default.
 
 ```json
 {
@@ -60,24 +20,72 @@ When files belong to a specific entity, use a direct relationship instead of pol
       "created_at": true,
       "scopeBy": "organizationId",
       "fields": [
-        { "name": "fileName", "type": "text", "length": 255 },
-        { "name": "fileKey", "type": "text", "length": 500 },
-        { "name": "fileUrl", "type": "text", "length": 1000 },
-        { "name": "mimeType", "type": "text", "length": 100 },
+        { "name": "fileName", "type": "text" },
+        { "name": "fileKey", "type": "text" },
+        { "name": "mimeType", "type": "varchar", "length": 100 },
         { "name": "fileSize", "type": "integer" },
-        { "name": "category", "type": "enum", "values": ["document", "image", "video", "other"], "default": "other" }
-      ]
+        { "name": "category", "type": "enum", "values": ["document", "image", "video", "other"], "default": "other" },
+        { "name": "metadata", "type": "json", "nullable": true }
+      ],
+      "uniques": [{ "fields": ["fileKey"] }]
     }
   ],
   "relationships": [
-    { "from": "Project", "to": "ProjectFile", "type": "OneToMany" },
-    { "from": "ProjectFile", "to": "Project", "type": "ManyToOne" },
-    { "from": "ProjectFile", "to": "User", "type": "ManyToOne", "to_name": "uploadedBy" }
+    { "from": "ProjectFile", "to": "Project", "type": "ManyToOne", "index": true, "cascadeDelete": true },
+    { "from": "ProjectFile", "to": "User", "type": "ManyToOne", "to_name": "uploadedBy" },
+    { "from": "ProjectFile", "to": "Organization", "type": "ManyToOne" }
   ]
 }
 ```
 
-**When to use:** When files are tightly coupled to one entity type. Gives you stronger typing and simpler queries.
+`fileKey` is the S3 object key. Generate the download URL from it at read time (presigned or CDN) instead of storing a URL that can expire. `cascadeDelete` removes the file rows with the project; delete the S3 objects in the same handler.
+
+**When to use:** Almost always. The database guarantees every file points at a project that exists.
+
+## Pattern 2: One File Table, Several Owner Types
+
+When a few entity types (for example Project, Task and Message) all take attachments, keep one `Attachment` table and give it one nullable foreign key per owner type. Exactly one of them is set on each row.
+
+```json
+{
+  "entities": [
+    {
+      "name": "Attachment",
+      "created_at": true,
+      "scopeBy": "organizationId",
+      "fields": [
+        { "name": "fileName", "type": "text" },
+        { "name": "fileKey", "type": "text" },
+        { "name": "mimeType", "type": "varchar", "length": 100 },
+        { "name": "fileSize", "type": "integer" },
+        { "name": "metadata", "type": "json", "nullable": true }
+      ],
+      "uniques": [{ "fields": ["fileKey"] }]
+    }
+  ],
+  "relationships": [
+    { "from": "Attachment", "to": "Project", "type": "ManyToOne", "nullable": true, "index": true, "cascadeDelete": true },
+    { "from": "Attachment", "to": "Task", "type": "ManyToOne", "nullable": true, "index": true, "cascadeDelete": true },
+    { "from": "Attachment", "to": "Message", "type": "ManyToOne", "nullable": true, "index": true, "cascadeDelete": true },
+    { "from": "Attachment", "to": "User", "type": "ManyToOne", "to_name": "uploadedBy" },
+    { "from": "Attachment", "to": "Organization", "type": "ManyToOne" }
+  ]
+}
+```
+
+This is an exclusive arc. Every reference is a real foreign key, so deleting a task removes its attachments and no row can point at a missing record. Postgres would enforce "exactly one owner" with a `CHECK` constraint, but `.apsorc` cannot express one, so validate it in the create and update handlers (see the custom-endpoints skill).
+
+**When to use:** Two to about five owner types. Adding an owner type later is one new nullable relationship.
+
+## Avoid: `entityType` + `entityId` Columns
+
+A common shortcut stores the owner as two text columns, `entityType: "task"` and `entityId: "123"`. Do not use it as the default. Postgres cannot put a foreign key on it, so:
+
+- Deleting the task leaves orphaned attachment rows and S3 objects.
+- A typo in `entityType` or a stale `entityId` is accepted silently.
+- You cannot join from an attachment to its owner in one query.
+
+Use it only when owner types are open-ended (users or plugins define new ones at runtime) and you accept cleaning up orphans with a scheduled job. Say so explicitly when you choose it.
 
 ## Pattern 3: Avatar / Profile Image
 
@@ -119,6 +127,6 @@ Useful for image dimensions (responsive display), video duration (playback UI), 
 
 | Need | Pattern |
 |------|---------|
-| Any entity can have attachments | Generic Attachment (Pattern 1) |
-| Files belong to one entity type | Direct Relationship (Pattern 2) |
+| Files belong to one entity type | Owned by one type (Pattern 1) |
+| A few entity types take attachments | Exclusive arc (Pattern 2) |
 | Single image per record | Field on entity (Pattern 3) |

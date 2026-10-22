@@ -1,0 +1,1 @@
+I'm a CI job (no TTY, no browser). Deploy the API in this directory to Apso. The workspace slug is `acme` and the service already exists with slug `billing-api`. I have an API token in `$APSO_API_TOKEN`. Give me the exact shell script.

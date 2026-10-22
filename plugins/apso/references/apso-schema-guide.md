@@ -191,17 +191,21 @@ The `scopeBy` property enables automatic multi-tenant data isolation. When set, 
 
 | Type | Description | Relevant Options |
 |------|-------------|-----------------|
-| `text` | String/varchar | `length` |
+| `text` | Unlimited-length string | |
+| `varchar` | String with a length limit (255 unless set) | `length` |
 | `integer` | Integer number | `default` |
 | `float` | Floating point number | `default` |
-| `decimal` | Fixed-precision decimal | `precision`, `scale` |
+| `decimal` | Fixed-precision decimal. Use for money. | `precision`, `scale` |
 | `numeric` | Numeric (alias for decimal) | `precision`, `scale` |
 | `boolean` | True/false | `default` |
-| `date` | Date (no time) | `default` |
+| `date` | Calendar date, no time of day | `default` |
+| `timestamptz` | Moment in time with time zone. Use for `*At` fields. | |
+| `timestamp` | Date and time without time zone | |
+| `uuid` | UUID value (not for the primary key; use `primaryKeyType`) | |
 | `enum` | Enumerated values | `values` (required) |
-| `json` | JSON column (TypeORM simple-json) | |
-| `json-plain` | JSON column (raw jsonb) | |
-| `array` | Array column | |
+| `json` | JSON column, stored as Postgres `jsonb` | |
+| `json-plain` | JSON column, stored as Postgres `json` | |
+| `array` | Postgres array (`text[]` unless `elementType` is set) | `elementType` |
 
 ---
 
@@ -257,7 +261,7 @@ Relationships are defined in a separate top-level `relationships` array.
 | `type` | `RelationshipType` | _(required)_ | See relationship types below. |
 | `to_name` | `string` | _(auto)_ | Property name on the source entity for the target. Used when multiple relationships exist to the same entity. |
 | `nullable` | `boolean` | `false` | Whether the FK column allows NULL. |
-| `bi_directional` | `boolean` | `false` | Whether to generate inverse navigation. |
+| `bi_directional` | `boolean` | `true` for OneToMany/ManyToOne, `false` otherwise | Whether to generate inverse navigation. Self-references are always one-directional. |
 | `cascadeDelete` | `boolean` | `false` | CASCADE on delete. |
 | `index` | `boolean` | `false` | Index the FK column. |
 | `joinTableName` | `string` | _(auto)_ | Custom join table name for ManyToMany. |
@@ -275,12 +279,13 @@ Relationships are defined in a separate top-level `relationships` array.
 
 ### Relationship Patterns
 
+**Declare each relationship once.** A `ManyToOne` and a `OneToMany` both generate the foreign key and the inverse property. If you declare `Project ManyToOne Organization` and also `Organization OneToMany Project`, the generated entity gets the relationship twice. `apso schema validate` does not catch this. Declare the `ManyToOne` from the child, since it carries `nullable`, `index` and `cascadeDelete`.
+
 **One-to-Many / Many-to-One (most common):**
 ```json
 {
   "relationships": [
-    { "from": "Organization", "to": "Project", "type": "OneToMany" },
-    { "from": "Project", "to": "Organization", "type": "ManyToOne" }
+    {"from": "Project", "to": "Organization", "type": "ManyToOne"}
   ]
 }
 ```
@@ -469,12 +474,9 @@ A task management API with organizations, projects, and tasks:
     }
   ],
   "relationships": [
-    { "from": "Organization", "to": "User", "type": "OneToMany" },
-    { "from": "User", "to": "Organization", "type": "ManyToOne" },
-    { "from": "Organization", "to": "Project", "type": "OneToMany", "index": true },
-    { "from": "Project", "to": "Organization", "type": "ManyToOne" },
-    { "from": "Project", "to": "Task", "type": "OneToMany" },
-    { "from": "Task", "to": "Project", "type": "ManyToOne" },
+    {"from": "User", "to": "Organization", "type": "ManyToOne"},
+    {"from": "Project", "to": "Organization", "type": "ManyToOne", "index": true},
+    {"from": "Task", "to": "Project", "type": "ManyToOne"},
     { "from": "Task", "to": "User", "type": "ManyToOne", "to_name": "assignee", "nullable": true }
   ]
 }

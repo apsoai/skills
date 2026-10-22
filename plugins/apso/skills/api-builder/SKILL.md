@@ -36,7 +36,7 @@ cd my-api
 
 Create or edit `.apsorc` in the project root. Use the `schema-designer` skill to generate this from requirements, or write it manually.
 
-See `references/apso-schema-guide.md` for the complete format reference.
+See `${CLAUDE_PLUGIN_ROOT}/references/apso-schema-guide.md` for the complete format reference.
 
 ### Step 3: Generate Code
 

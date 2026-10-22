@@ -45,7 +45,7 @@ BetterAuth requires specific entity names. The User entity is PascalCase; `accou
       "updated_at": true,
       "fields": [
         { "name": "token", "type": "text", "length": 255, "unique": true },
-        { "name": "expiresAt", "type": "date" },
+        { "name": "expiresAt", "type": "timestamptz" },
         { "name": "ipAddress", "type": "text", "length": 45, "nullable": true },
         { "name": "userAgent", "type": "text", "nullable": true }
       ]
@@ -57,15 +57,13 @@ BetterAuth requires specific entity names. The User entity is PascalCase; `accou
       "fields": [
         { "name": "identifier", "type": "text", "length": 255 },
         { "name": "value", "type": "text", "length": 255 },
-        { "name": "expiresAt", "type": "date" }
+        { "name": "expiresAt", "type": "timestamptz" }
       ]
     }
   ],
   "relationships": [
-    { "from": "User", "to": "account", "type": "OneToMany" },
-    { "from": "account", "to": "User", "type": "ManyToOne" },
-    { "from": "User", "to": "session", "type": "OneToMany" },
-    { "from": "session", "to": "User", "type": "ManyToOne" }
+    {"from": "account", "to": "User", "type": "ManyToOne"},
+    {"from": "session", "to": "User", "type": "ManyToOne"}
   ]
 }
 ```
@@ -99,10 +97,8 @@ Connect users to organizations with a junction table for role assignment.
     }
   ],
   "relationships": [
-    { "from": "Organization", "to": "OrganizationMember", "type": "OneToMany" },
-    { "from": "OrganizationMember", "to": "Organization", "type": "ManyToOne" },
-    { "from": "User", "to": "OrganizationMember", "type": "OneToMany" },
-    { "from": "OrganizationMember", "to": "User", "type": "ManyToOne" }
+    {"from": "OrganizationMember", "to": "Organization", "type": "ManyToOne"},
+    {"from": "OrganizationMember", "to": "User", "type": "ManyToOne"}
   ]
 }
 ```
@@ -142,8 +138,7 @@ For apps with granular permissions beyond simple role enums.
   "relationships": [
     { "from": "Role", "to": "Permission", "type": "ManyToMany", "bi_directional": true },
     { "from": "User", "to": "Role", "type": "ManyToMany", "bi_directional": true },
-    { "from": "Organization", "to": "Role", "type": "OneToMany" },
-    { "from": "Role", "to": "Organization", "type": "ManyToOne" }
+    {"from": "Role", "to": "Organization", "type": "ManyToOne"}
   ]
 }
 ```
@@ -172,17 +167,15 @@ For service-to-service or developer API access.
         { "name": "keyHash", "type": "text", "length": 255 },
         { "name": "prefix", "type": "text", "length": 10 },
         { "name": "scopes", "type": "json-plain", "nullable": true },
-        { "name": "expiresAt", "type": "date", "nullable": true },
-        { "name": "lastUsedAt", "type": "date", "nullable": true },
+        { "name": "expiresAt", "type": "timestamptz", "nullable": true },
+        { "name": "lastUsedAt", "type": "timestamptz", "nullable": true },
         { "name": "status", "type": "enum", "values": ["active", "revoked"], "default": "active" }
       ]
     }
   ],
   "relationships": [
-    { "from": "Organization", "to": "ApiKey", "type": "OneToMany" },
-    { "from": "ApiKey", "to": "Organization", "type": "ManyToOne" },
-    { "from": "User", "to": "ApiKey", "type": "OneToMany", "to_name": "createdBy" },
-    { "from": "ApiKey", "to": "User", "type": "ManyToOne", "to_name": "createdBy" }
+    {"from": "ApiKey", "to": "Organization", "type": "ManyToOne"},
+    {"from": "ApiKey", "to": "User", "type": "ManyToOne", "to_name": "createdBy"}
   ]
 }
 ```

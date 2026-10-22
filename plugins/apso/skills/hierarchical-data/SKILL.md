@@ -33,8 +33,7 @@ Each record points to its parent via a self-referencing relationship.
     }
   ],
   "relationships": [
-    { "from": "Category", "to": "Category", "type": "ManyToOne", "to_name": "parent", "nullable": true },
-    { "from": "Category", "to": "Category", "type": "OneToMany", "to_name": "children" }
+    {"from": "Category", "to": "Category", "type": "ManyToOne", "to_name": "parent", "nullable": true}
   ]
 }
 ```
@@ -101,8 +100,7 @@ Comments that can reply to other comments, with a depth limit.
   "relationships": [
     { "from": "Comment", "to": "Comment", "type": "ManyToOne", "to_name": "parent", "nullable": true },
     { "from": "Comment", "to": "User", "type": "ManyToOne", "to_name": "author" },
-    { "from": "Comment", "to": "Task", "type": "ManyToOne" },
-    { "from": "Task", "to": "Comment", "type": "OneToMany" }
+    {"from": "Comment", "to": "Task", "type": "ManyToOne"}
   ]
 }
 ```
@@ -158,4 +156,8 @@ The key to all tree patterns is the self-referencing relationship:
 }
 ```
 
-`nullable: true` is required because root nodes have no parent. `to_name` is required because both sides reference the same entity.
+`nullable: true` is required because root nodes have no parent. Without it the first row can never be inserted, and `apso schema validate` rejects it with `REQUIRED_RELATIONSHIP_CYCLE`. `to_name` is required because both ends reference the same entity.
+
+Declare only this one relationship. Apso does not generate a `children` collection for a self-reference, and adding a `"type": "OneToMany"` self-reference produces a second, required foreign key to the same table. Load children by filtering on `parentId`.
+
+The same rule applies to any self-reference outside a tree, such as `User.manager` for an org chart: one nullable `ManyToOne` with a `to_name`.

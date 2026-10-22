@@ -85,4 +85,4 @@ Run this before finalizing a schema:
 - [ ] `created_at` / `updated_at` on every entity
 - [ ] Status fields are enums with valid defaults (no `default: null`)
 - [ ] Tenant-scoped entities use `scopeBy` (except tenant root / lookups / auth)
-- [ ] Field types and syntax match `apso-schema-guide.md` (e.g. `text` not `string`/`varchar`; no `*_id` fields)
+- [ ] Field types and syntax match `apso-schema-guide.md` (no `*_id` fields; moments in time are `timestamptz`, not `date`; long text is `text`, not `varchar`)

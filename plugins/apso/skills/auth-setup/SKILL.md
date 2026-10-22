@@ -54,7 +54,7 @@ The minimum BetterAuth setup requires these entities:
       "updated_at": true,
       "fields": [
         { "name": "token", "type": "text", "length": 255, "unique": true },
-        { "name": "expiresAt", "type": "date" },
+        { "name": "expiresAt", "type": "timestamptz" },
         { "name": "ipAddress", "type": "text", "length": 45, "nullable": true },
         { "name": "userAgent", "type": "text", "nullable": true }
       ]
@@ -66,7 +66,7 @@ The minimum BetterAuth setup requires these entities:
       "fields": [
         { "name": "identifier", "type": "text", "length": 255 },
         { "name": "value", "type": "text", "length": 255 },
-        { "name": "expiresAt", "type": "date" }
+        { "name": "expiresAt", "type": "timestamptz" }
       ]
     }
   ]

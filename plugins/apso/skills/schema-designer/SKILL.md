@@ -19,7 +19,9 @@ A `.apsorc` schema file with:
 
 ## Design Principles
 
-I apply `references/data-modeling-principles.md` throughout — normalization (3NF), modeling interactions as **event entities not counters**, junction entities for many-to-many, and a deliberate indexing strategy for scale. For a deeper audit of an existing schema, use the `schema-review` skill.
+I apply `${CLAUDE_PLUGIN_ROOT}/references/data-modeling-principles.md` throughout — normalization (3NF), modeling interactions as **event entities not counters**, junction entities for many-to-many, and a deliberate indexing strategy for scale. For a deeper audit of an existing schema, use the `schema-review` skill.
+
+For specific patterns, read `${CLAUDE_PLUGIN_ROOT}/references/relational-patterns.md`. It covers trees, subtypes, versioned rows, effective dates, orders and lines, money, custom fields, comments and reactions, ordering and per-tenant numbering. Each entry gives the Postgres design and its `.apsorc` encoding. When a pattern needs a guarantee `.apsorc` cannot express (a `CHECK`, a partial unique index, overlap prevention), encode the closest form and tell the user which guarantee is missing and where to enforce it.
 
 ## How I Work
 
@@ -46,7 +48,8 @@ For each entity, determine:
 
 For each entity pair:
 - Determine cardinality (one-to-many, many-to-many, etc.)
-- Define both sides when needed
+- Declare each relationship once, as a `ManyToOne` from the child to the parent. Apso generates the inverse collection on the parent. Declaring the `OneToMany` as well creates a second, duplicate foreign key.
+- A self-reference (tree) is one `ManyToOne` with `to_name: "parent"` and `nullable: true`. Do not add a `children` OneToMany.
 - Use `to_name` when an entity has multiple relationships to the same target
 - Add `index: true` on frequently queried foreign keys
 
@@ -69,16 +72,21 @@ Add composite indexes for common query patterns:
 
 ## Schema Format Reference
 
-Read `references/apso-schema-guide.md` for the complete field type table, relationship patterns, auth configuration, and working examples.
+Read `${CLAUDE_PLUGIN_ROOT}/references/apso-schema-guide.md` for the complete field type table, relationship patterns, auth configuration, and working examples.
 
 ### Quick Reference
 
-**Field types:** `text`, `integer`, `float`, `decimal`, `numeric`, `boolean`, `date`, `enum`, `json`, `json-plain`, `array`
+**Field types:** `text`, `varchar`, `integer`, `float`, `decimal`, `numeric`, `boolean`, `date`, `timestamptz`, `timestamp`, `enum`, `json`, `uuid`, `array`
+
+**Picking a type:**
+- Moments in time (`paidAt`, `expiresAt`, `scheduledFor`) are `timestamptz`. `date` stores a calendar day with no time, so use it only for things like `birthDate` or `dueDate`.
+- `text` has no length limit. `varchar` defaults to 255 characters, so use it only with a known short limit, and never for descriptions, notes or bodies.
+- Money is `decimal` with `precision` and `scale`, never `float`.
+- `json` is stored as `jsonb`. Use it for loose attributes, not for data you filter or join on.
 
 **Common mistakes:**
-- `"string"` is wrong. Use `"text"`.
-- `"uuid"` is not a field type. Use `"primaryKeyType": "uuid"` on the entity.
-- `"timestamp"` is not a field type. Use `"date"`, or `"created_at": true` on the entity.
+- The primary key is set with `"primaryKeyType": "uuid"` on the entity, not with a `uuid` field. A `uuid` field is only for a UUID that comes from somewhere else.
+- `created_at` and `updated_at` come from `"created_at": true` and `"updated_at": true` on the entity, not from fields.
 - `"required": true` is not a field property. Fields are required by default. Use `"nullable": true` to make optional.
 
 **Relationship types:** `OneToMany`, `ManyToOne`, `ManyToMany`, `OneToOne`
@@ -115,8 +123,7 @@ Read `references/apso-schema-guide.md` for the complete field type table, relati
     }
   ],
   "relationships": [
-    { "from": "Organization", "to": "Project", "type": "OneToMany" },
-    { "from": "Project", "to": "Organization", "type": "ManyToOne" }
+    {"from": "Project", "to": "Organization", "type": "ManyToOne"}
   ]
 }
 ```

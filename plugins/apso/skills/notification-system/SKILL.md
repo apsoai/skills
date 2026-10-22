@@ -27,7 +27,7 @@ A notification entity with read/unread tracking and linking to the source action
         { "name": "entityId", "type": "text", "length": 50, "nullable": true },
         { "name": "actionUrl", "type": "text", "nullable": true },
         { "name": "isRead", "type": "boolean", "default": "false" },
-        { "name": "readAt", "type": "date", "nullable": true }
+        { "name": "readAt", "type": "timestamptz", "nullable": true }
       ],
       "indexes": [
         { "fields": ["recipientId", "isRead", "created_at"] },
@@ -38,8 +38,7 @@ A notification entity with read/unread tracking and linking to the source action
   "relationships": [
     { "from": "Notification", "to": "User", "type": "ManyToOne", "to_name": "recipient" },
     { "from": "Notification", "to": "User", "type": "ManyToOne", "to_name": "actor", "nullable": true },
-    { "from": "Organization", "to": "Notification", "type": "OneToMany" },
-    { "from": "Notification", "to": "Organization", "type": "ManyToOne" }
+    {"from": "Notification", "to": "Organization", "type": "ManyToOne"}
   ]
 }
 ```
@@ -71,8 +70,7 @@ Let users control which notifications they receive and through which channels.
     }
   ],
   "relationships": [
-    { "from": "User", "to": "NotificationPreference", "type": "OneToMany" },
-    { "from": "NotificationPreference", "to": "User", "type": "ManyToOne" }
+    {"from": "NotificationPreference", "to": "User", "type": "ManyToOne"}
   ]
 }
 ```
@@ -90,7 +88,7 @@ Track which notifications have been sent via email and batch them into digests.
       "fields": [
         { "name": "channel", "type": "enum", "values": ["in_app", "email", "push", "slack"] },
         { "name": "status", "type": "enum", "values": ["pending", "sent", "failed", "bounced"], "default": "pending" },
-        { "name": "sentAt", "type": "date", "nullable": true },
+        { "name": "sentAt", "type": "timestamptz", "nullable": true },
         { "name": "failureReason", "type": "text", "nullable": true }
       ],
       "indexes": [
@@ -99,8 +97,7 @@ Track which notifications have been sent via email and batch them into digests.
     }
   ],
   "relationships": [
-    { "from": "Notification", "to": "NotificationDelivery", "type": "OneToMany" },
-    { "from": "NotificationDelivery", "to": "Notification", "type": "ManyToOne" }
+    {"from": "NotificationDelivery", "to": "Notification", "type": "ManyToOne"}
   ]
 }
 ```

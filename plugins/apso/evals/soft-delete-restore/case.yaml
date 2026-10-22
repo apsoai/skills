@@ -1,0 +1,11 @@
+schema_version: "1.1"
+name: soft-delete-restore
+tags: [soft-delete]
+# refs is a symlink to the plugin's references/, so the skill can read them.
+context:
+  add_dirs: [refs]
+execution:
+  prompt_file: prompt.md
+  max_turns: 15
+  allowed_tools: [Read, Glob, Grep, Skill, Write]
+graders: []

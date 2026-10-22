@@ -21,7 +21,7 @@ Add a `deleted_at` field. Null means active, a date means deleted.
   "fields": [
     { "name": "name", "type": "text", "length": 100 },
     { "name": "status", "type": "enum", "values": ["active", "archived"], "default": "active" },
-    { "name": "deleted_at", "type": "date", "nullable": true, "index": true }
+    { "name": "deleted_at", "type": "timestamptz", "nullable": true, "index": true }
   ],
   "indexes": [
     { "fields": ["organizationId", "deleted_at"] }
@@ -68,9 +68,9 @@ Track who deleted and when, with a retention period for permanent cleanup.
   "fields": [
     { "name": "name", "type": "text", "length": 100 },
     { "name": "email", "type": "text", "length": 255, "is_email": true },
-    { "name": "deleted_at", "type": "date", "nullable": true },
+    { "name": "deleted_at", "type": "timestamptz", "nullable": true },
     { "name": "deletedReason", "type": "text", "nullable": true },
-    { "name": "retainUntil", "type": "date", "nullable": true }
+    { "name": "retainUntil", "type": "timestamptz", "nullable": true }
   ]
 }
 ```
@@ -105,7 +105,7 @@ Move deleted records to a separate archive entity instead of flagging them.
         { "name": "name", "type": "text", "length": 100 },
         { "name": "status", "type": "text", "length": 20 },
         { "name": "snapshot", "type": "json-plain" },
-        { "name": "archivedAt", "type": "date" },
+        { "name": "archivedAt", "type": "timestamptz" },
         { "name": "archiveReason", "type": "text", "nullable": true }
       ],
       "indexes": [

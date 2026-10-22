@@ -82,8 +82,7 @@ A dedicated entity that records every significant action in the system.
   ],
   "relationships": [
     { "from": "ActivityLog", "to": "User", "type": "ManyToOne", "to_name": "actor" },
-    { "from": "Organization", "to": "ActivityLog", "type": "OneToMany" },
-    { "from": "ActivityLog", "to": "Organization", "type": "ManyToOne" }
+    {"from": "ActivityLog", "to": "Organization", "type": "ManyToOne"}
   ]
 }
 ```
@@ -126,8 +125,7 @@ Track exact field-level changes for critical entities.
   ],
   "relationships": [
     { "from": "ChangeRecord", "to": "User", "type": "ManyToOne", "to_name": "changedBy" },
-    { "from": "Organization", "to": "ChangeRecord", "type": "OneToMany" },
-    { "from": "ChangeRecord", "to": "Organization", "type": "ManyToOne" }
+    {"from": "ChangeRecord", "to": "Organization", "type": "ManyToOne"}
   ]
 }
 ```
