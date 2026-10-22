@@ -14,7 +14,7 @@ Foreign key columns are named `<to_name or entity>Id` (for example `projectId`, 
 
 ## Relationship rules
 
-- Declare each relationship once, as a `ManyToOne` from the child. Apso generates the inverse collection. Never add the matching `OneToMany` as well; it duplicates the foreign key.
+- Declare each relationship once, as a `ManyToOne` from the child. Apso generates the inverse collection. Do not add the matching `OneToMany` as well: a second declaration is redundant, and when the two name the collection differently (a `to_name` on the OneToMany), the parent gets two collections for the same foreign key.
 - A self-reference is one `ManyToOne` with a `to_name` and `nullable: true`. No `children` OneToMany.
 - Two relationships to the same entity need distinct `to_name` values (`author`, `assignee`).
 - Set `"index": true` on every `ManyToOne`. Apso does not index foreign keys on its own.

@@ -279,7 +279,7 @@ Relationships are defined in a separate top-level `relationships` array.
 
 ### Relationship Patterns
 
-**Declare each relationship once.** A `ManyToOne` and a `OneToMany` both generate the foreign key and the inverse property. If you declare `Project ManyToOne Organization` and also `Organization OneToMany Project`, the generated entity gets the relationship twice. `apso schema validate` does not catch this. Declare the `ManyToOne` from the child, since it carries `nullable`, `index` and `cascadeDelete`.
+**Declare each relationship once.** A `ManyToOne` and a `OneToMany` each generate the foreign key and the inverse property, so declaring `Project ManyToOne Organization` and also `Organization OneToMany Project` is redundant. When the two name the collection differently (a `to_name` on the `OneToMany`), Organization gets two collections for the same foreign key, and `apso schema validate` does not catch it. Declare the `ManyToOne` from the child, since it carries `nullable`, `index` and `cascadeDelete`.
 
 **One-to-Many / Many-to-One (most common):**
 ```json

@@ -23,8 +23,9 @@ validate() {
       if ! out=$(cd "$d" && npx -y @apso/cli@latest schema validate --local 2>&1); then
         printf -- '--- INVALID .apsorc from %s:\n%s\n' "$c" "$out" >&2; ok=1
       fi
-      # The CLI generates the inverse side itself and does not dedupe, so
-      # A OneToMany B plus B ManyToOne A yields the relationship twice.
+      # The CLI generates the inverse side itself, so A OneToMany B plus
+      # B ManyToOne A is redundant, and with differing names gives A two
+      # collections for one foreign key. The docs say declare once.
       if ! out=$(node -e 'const r=JSON.parse(require("fs").readFileSync(process.argv[1])).relationships||[];const d=r.filter(a=>a.type==="OneToMany"&&(a.from===a.to||r.some(b=>b.type==="ManyToOne"&&b.from===a.to&&b.to===a.from)));d.forEach(a=>console.log(`${a.from} OneToMany ${a.to} duplicates its ManyToOne side`));process.exit(d.length?1:0)' "$d/.apsorc" 2>&1); then
         printf -- '--- DUPLICATE relationship sides in .apsorc from %s:\n%s\n' "$c" "$out" >&2; ok=1
       fi

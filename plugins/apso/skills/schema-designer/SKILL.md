@@ -48,7 +48,7 @@ For each entity, determine:
 
 For each entity pair:
 - Determine cardinality (one-to-many, many-to-many, etc.)
-- Declare each relationship once, as a `ManyToOne` from the child to the parent. Apso generates the inverse collection on the parent. Declaring the `OneToMany` as well creates a second, duplicate foreign key.
+- Declare each relationship once, as a `ManyToOne` from the child to the parent. Apso generates the inverse collection on the parent. Do not also declare the `OneToMany`: a second declaration is redundant, and when the two name the collection differently (a `to_name` on the OneToMany), the parent gets two collections for the same foreign key.
 - A self-reference (tree) is one `ManyToOne` with `to_name: "parent"` and `nullable: true`. Do not add a `children` OneToMany.
 - Use `to_name` when an entity has multiple relationships to the same target
 - Set `"index": true` on every `ManyToOne`. Apso does not index foreign keys on its own.

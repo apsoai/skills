@@ -215,7 +215,7 @@ Offer these for CRM, B2B and commerce apps only. For most SaaS apps a plain User
    - CHECK constraints (exclusive arc, single-table inheritance, positive quantities).
    - `ON DELETE SET NULL`.
    - GIN indexes on `jsonb`.
-   - Duplicate relationship sides: `apso schema validate` passes `A OneToMany B` plus `B ManyToOne A`, which generates the relationship twice.
+   - Duplicate relationship sides with different names: `A OneToMany B` with `to_name: "bs"` plus `B ManyToOne A` gives A two collections (`bs` and `b`) over one foreign key, and the linter misses it because the names don't clash. (A plain pair with matching names is deduped by `getRelationshipForTemplate` and is harmless.)
    - `json` maps to `jsonb` in entities but `json` in the migration type map.
    - A version column for optimistic locking.
    - Identity PKs instead of `serial`.
