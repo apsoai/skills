@@ -30,7 +30,7 @@ Free-form tags that can be applied to any entity. Users create tags on the fly.
     }
   ],
   "relationships": [
-    {"from": "Tag", "to": "Organization", "type": "ManyToOne"},
+    {"from": "Tag", "to": "Organization", "type": "ManyToOne", "index": true},
     { "from": "Project", "to": "Tag", "type": "ManyToMany", "bi_directional": true },
     { "from": "Task", "to": "Tag", "type": "ManyToMany", "bi_directional": true }
   ]
@@ -64,8 +64,8 @@ Each record belongs to exactly one category. Categories are predefined.
     }
   ],
   "relationships": [
-    {"from": "Category", "to": "Organization", "type": "ManyToOne"},
-    {"from": "Product", "to": "Category", "type": "ManyToOne"}
+    {"from": "Category", "to": "Organization", "type": "ManyToOne", "index": true},
+    {"from": "Product", "to": "Category", "type": "ManyToOne", "index": true}
   ]
 }
 ```
@@ -98,8 +98,8 @@ Categories with parent-child nesting. Combines the `hierarchical-data` pattern w
     }
   ],
   "relationships": [
-    {"from": "Category", "to": "Category", "type": "ManyToOne", "to_name": "parent", "nullable": true},
-    {"from": "Category", "to": "Organization", "type": "ManyToOne"}
+    {"from": "Category", "to": "Category", "type": "ManyToOne", "to_name": "parent", "nullable": true, "index": true},
+    {"from": "Category", "to": "Organization", "type": "ManyToOne", "index": true}
   ]
 }
 ```
@@ -140,9 +140,9 @@ Multiple independent classification dimensions. Each entity can be classified al
     }
   ],
   "relationships": [
-    {"from": "FacetValue", "to": "Facet", "type": "ManyToOne"},
+    {"from": "FacetValue", "to": "Facet", "type": "ManyToOne", "index": true},
     { "from": "Product", "to": "FacetValue", "type": "ManyToMany", "bi_directional": true },
-    {"from": "Facet", "to": "Organization", "type": "ManyToOne"}
+    {"from": "Facet", "to": "Organization", "type": "ManyToOne", "index": true}
   ]
 }
 ```

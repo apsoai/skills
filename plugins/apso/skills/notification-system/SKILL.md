@@ -36,9 +36,9 @@ A notification entity with read/unread tracking and linking to the source action
     }
   ],
   "relationships": [
-    { "from": "Notification", "to": "User", "type": "ManyToOne", "to_name": "recipient" },
-    { "from": "Notification", "to": "User", "type": "ManyToOne", "to_name": "actor", "nullable": true },
-    {"from": "Notification", "to": "Organization", "type": "ManyToOne"}
+    {"from": "Notification", "to": "User", "type": "ManyToOne", "to_name": "recipient", "index": true},
+    {"from": "Notification", "to": "User", "type": "ManyToOne", "to_name": "actor", "nullable": true, "index": true},
+    {"from": "Notification", "to": "Organization", "type": "ManyToOne", "index": true}
   ]
 }
 ```
@@ -70,7 +70,7 @@ Let users control which notifications they receive and through which channels.
     }
   ],
   "relationships": [
-    {"from": "NotificationPreference", "to": "User", "type": "ManyToOne"}
+    {"from": "NotificationPreference", "to": "User", "type": "ManyToOne", "index": true}
   ]
 }
 ```
@@ -97,7 +97,7 @@ Track which notifications have been sent via email and batch them into digests.
     }
   ],
   "relationships": [
-    {"from": "NotificationDelivery", "to": "Notification", "type": "ManyToOne"}
+    {"from": "NotificationDelivery", "to": "Notification", "type": "ManyToOne", "index": true}
   ]
 }
 ```

@@ -62,8 +62,8 @@ BetterAuth requires specific entity names. The User entity is PascalCase; `accou
     }
   ],
   "relationships": [
-    {"from": "account", "to": "User", "type": "ManyToOne"},
-    {"from": "session", "to": "User", "type": "ManyToOne"}
+    {"from": "account", "to": "User", "type": "ManyToOne", "index": true},
+    {"from": "session", "to": "User", "type": "ManyToOne", "index": true}
   ]
 }
 ```
@@ -97,8 +97,8 @@ Connect users to organizations with a junction table for role assignment.
     }
   ],
   "relationships": [
-    {"from": "OrganizationMember", "to": "Organization", "type": "ManyToOne"},
-    {"from": "OrganizationMember", "to": "User", "type": "ManyToOne"}
+    {"from": "OrganizationMember", "to": "Organization", "type": "ManyToOne", "index": true},
+    {"from": "OrganizationMember", "to": "User", "type": "ManyToOne", "index": true}
   ]
 }
 ```
@@ -138,7 +138,7 @@ For apps with granular permissions beyond simple role enums.
   "relationships": [
     { "from": "Role", "to": "Permission", "type": "ManyToMany", "bi_directional": true },
     { "from": "User", "to": "Role", "type": "ManyToMany", "bi_directional": true },
-    {"from": "Role", "to": "Organization", "type": "ManyToOne"}
+    {"from": "Role", "to": "Organization", "type": "ManyToOne", "index": true}
   ]
 }
 ```
@@ -174,8 +174,8 @@ For service-to-service or developer API access.
     }
   ],
   "relationships": [
-    {"from": "ApiKey", "to": "Organization", "type": "ManyToOne"},
-    {"from": "ApiKey", "to": "User", "type": "ManyToOne", "to_name": "createdBy"}
+    {"from": "ApiKey", "to": "Organization", "type": "ManyToOne", "index": true},
+    {"from": "ApiKey", "to": "User", "type": "ManyToOne", "to_name": "createdBy", "index": true}
   ]
 }
 ```

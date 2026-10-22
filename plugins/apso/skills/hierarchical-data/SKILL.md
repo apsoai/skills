@@ -33,7 +33,7 @@ Each record points to its parent via a self-referencing relationship.
     }
   ],
   "relationships": [
-    {"from": "Category", "to": "Category", "type": "ManyToOne", "to_name": "parent", "nullable": true}
+    {"from": "Category", "to": "Category", "type": "ManyToOne", "to_name": "parent", "nullable": true, "index": true}
   ]
 }
 ```
@@ -98,9 +98,9 @@ Comments that can reply to other comments, with a depth limit.
     }
   ],
   "relationships": [
-    { "from": "Comment", "to": "Comment", "type": "ManyToOne", "to_name": "parent", "nullable": true },
-    { "from": "Comment", "to": "User", "type": "ManyToOne", "to_name": "author" },
-    {"from": "Comment", "to": "Task", "type": "ManyToOne"}
+    {"from": "Comment", "to": "Comment", "type": "ManyToOne", "to_name": "parent", "nullable": true, "index": true},
+    {"from": "Comment", "to": "User", "type": "ManyToOne", "to_name": "author", "index": true},
+    {"from": "Comment", "to": "Task", "type": "ManyToOne", "index": true}
   ]
 }
 ```

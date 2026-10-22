@@ -285,7 +285,7 @@ Relationships are defined in a separate top-level `relationships` array.
 ```json
 {
   "relationships": [
-    {"from": "Project", "to": "Organization", "type": "ManyToOne"}
+    {"from": "Project", "to": "Organization", "type": "ManyToOne", "index": true}
   ]
 }
 ```
@@ -294,8 +294,8 @@ Relationships are defined in a separate top-level `relationships` array.
 ```json
 {
   "relationships": [
-    { "from": "Service", "to": "Stack", "type": "ManyToOne", "to_name": "networkStack", "nullable": true },
-    { "from": "Service", "to": "Stack", "type": "ManyToOne", "to_name": "databaseStack", "nullable": true }
+    {"from": "Service", "to": "Stack", "type": "ManyToOne", "to_name": "networkStack", "nullable": true, "index": true},
+    {"from": "Service", "to": "Stack", "type": "ManyToOne", "to_name": "databaseStack", "nullable": true, "index": true}
   ]
 }
 ```
@@ -313,7 +313,7 @@ Relationships are defined in a separate top-level `relationships` array.
 ```json
 {
   "relationships": [
-    { "from": "Category", "to": "Category", "type": "ManyToOne", "to_name": "parent", "nullable": true }
+    {"from": "Category", "to": "Category", "type": "ManyToOne", "to_name": "parent", "nullable": true, "index": true}
   ]
 }
 ```
@@ -474,10 +474,10 @@ A task management API with organizations, projects, and tasks:
     }
   ],
   "relationships": [
-    {"from": "User", "to": "Organization", "type": "ManyToOne"},
+    {"from": "User", "to": "Organization", "type": "ManyToOne", "index": true},
     {"from": "Project", "to": "Organization", "type": "ManyToOne", "index": true},
-    {"from": "Task", "to": "Project", "type": "ManyToOne"},
-    { "from": "Task", "to": "User", "type": "ManyToOne", "to_name": "assignee", "nullable": true }
+    {"from": "Task", "to": "Project", "type": "ManyToOne", "index": true},
+    {"from": "Task", "to": "User", "type": "ManyToOne", "to_name": "assignee", "nullable": true, "index": true}
   ]
 }
 ```

@@ -1,7 +1,7 @@
 ---
 name: schema-designer
 category: data
-description: Design a database schema from application requirements. Takes entity descriptions, relationships, and business rules and produces a validated schema definition. Triggers on "design schema", "create data model", "define entities", "plan database".
+description: Design a database schema or data model from application requirements. Takes entity descriptions, relationships, and business rules and produces a validated .apsorc schema. Use whenever the user asks to design, model or plan the data, tables, entities or database for an app or feature (billing, CRM, invoicing, case management, anything), even when another domain skill also applies. Triggers on "design schema", "data model", "design the data model", "create data model", "define entities", "plan database", "database design".
 ---
 
 # Schema Designer
@@ -51,7 +51,7 @@ For each entity pair:
 - Declare each relationship once, as a `ManyToOne` from the child to the parent. Apso generates the inverse collection on the parent. Declaring the `OneToMany` as well creates a second, duplicate foreign key.
 - A self-reference (tree) is one `ManyToOne` with `to_name: "parent"` and `nullable: true`. Do not add a `children` OneToMany.
 - Use `to_name` when an entity has multiple relationships to the same target
-- Add `index: true` on frequently queried foreign keys
+- Set `"index": true` on every `ManyToOne`. Apso does not index foreign keys on its own.
 
 ### Step 4: Add Multi-Tenancy
 
@@ -69,6 +69,10 @@ Add composite indexes for common query patterns:
   { "fields": ["organizationId", "name"], "unique": true }
 ]
 ```
+
+### Step 6: Validate
+
+If the Apso CLI is available, run `apso schema validate --local` in the project folder. Fix every error, and every `FOREIGN_KEY_NOT_INDEXED` warning. Other warnings can stay when there is a reason (for example `MISSING_TIMESTAMPS` on append-only rows).
 
 ## Schema Format Reference
 
@@ -123,7 +127,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/references/apso-schema-guide.md` for the complete fi
     }
   ],
   "relationships": [
-    {"from": "Project", "to": "Organization", "type": "ManyToOne"}
+    {"from": "Project", "to": "Organization", "type": "ManyToOne", "index": true}
   ]
 }
 ```

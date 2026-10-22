@@ -37,7 +37,7 @@ Rule of thumb: if you're about to add a field that "tracks" or "counts" interact
 Indexes are the difference between O(n) table scans and O(log n) lookups. Be deliberate.
 
 Index a field when it is used in:
-- a **relationship / foreign key** (Apso indexes these from the relationship),
+- a **relationship / foreign key**. Apso does not index foreign keys on its own: set `"index": true` on every `ManyToOne`. Postgres needs the index for joins and for cascading or blocked deletes, and `apso schema validate` warns with `FOREIGN_KEY_NOT_INDEXED` without it.
 - a **`WHERE` filter** (`status`, `slug`, `email`),
 - an **`ORDER BY`** (`created_at`, `published_at`),
 - a **uniqueness** guarantee (`slug`, `email` → also a unique constraint).
@@ -80,7 +80,7 @@ Run this before finalizing a schema:
 - [ ] User interactions modeled as **event entities**, not counters
 - [ ] Many-to-many uses **junction entities**; no array/`*_id` fakery
 - [ ] No transitive dependencies / repeating groups (3NF)
-- [ ] `indexes` populated for FKs, filters, and sort fields; composites for common queries
+- [ ] Every `ManyToOne` has `"index": true`; `indexes` cover filters and sort fields; composites for common queries
 - [ ] Unique constraints on natural keys (email, slug)
 - [ ] `created_at` / `updated_at` on every entity
 - [ ] Status fields are enums with valid defaults (no `default: null`)

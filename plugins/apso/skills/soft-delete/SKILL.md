@@ -114,7 +114,7 @@ Move deleted records to a separate archive entity instead of flagging them.
     }
   ],
   "relationships": [
-    { "from": "ProjectArchive", "to": "User", "type": "ManyToOne", "to_name": "archivedBy" }
+    {"from": "ProjectArchive", "to": "User", "type": "ManyToOne", "to_name": "archivedBy", "index": true}
   ]
 }
 ```

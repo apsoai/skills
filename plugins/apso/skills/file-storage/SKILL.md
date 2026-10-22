@@ -32,8 +32,8 @@ When files belong to one kind of record, give the file entity a real foreign key
   ],
   "relationships": [
     { "from": "ProjectFile", "to": "Project", "type": "ManyToOne", "index": true, "cascadeDelete": true },
-    { "from": "ProjectFile", "to": "User", "type": "ManyToOne", "to_name": "uploadedBy" },
-    { "from": "ProjectFile", "to": "Organization", "type": "ManyToOne" }
+    {"from": "ProjectFile", "to": "User", "type": "ManyToOne", "to_name": "uploadedBy", "index": true},
+    {"from": "ProjectFile", "to": "Organization", "type": "ManyToOne", "index": true}
   ]
 }
 ```
@@ -67,8 +67,8 @@ When a few entity types (for example Project, Task and Message) all take attachm
     { "from": "Attachment", "to": "Project", "type": "ManyToOne", "nullable": true, "index": true, "cascadeDelete": true },
     { "from": "Attachment", "to": "Task", "type": "ManyToOne", "nullable": true, "index": true, "cascadeDelete": true },
     { "from": "Attachment", "to": "Message", "type": "ManyToOne", "nullable": true, "index": true, "cascadeDelete": true },
-    { "from": "Attachment", "to": "User", "type": "ManyToOne", "to_name": "uploadedBy" },
-    { "from": "Attachment", "to": "Organization", "type": "ManyToOne" }
+    {"from": "Attachment", "to": "User", "type": "ManyToOne", "to_name": "uploadedBy", "index": true},
+    {"from": "Attachment", "to": "Organization", "type": "ManyToOne", "index": true}
   ]
 }
 ```

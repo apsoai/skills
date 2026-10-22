@@ -83,11 +83,11 @@ The standard SaaS billing schema that maps to Stripe's data model.
     }
   ],
   "relationships": [
-    {"from": "Subscription", "to": "Organization", "type": "ManyToOne"},
-    { "from": "Subscription", "to": "Plan", "type": "ManyToOne" },
-    {"from": "PaymentMethod", "to": "Organization", "type": "ManyToOne"},
-    {"from": "Invoice", "to": "Organization", "type": "ManyToOne"},
-    { "from": "Invoice", "to": "Subscription", "type": "ManyToOne" }
+    {"from": "Subscription", "to": "Organization", "type": "ManyToOne", "index": true},
+    {"from": "Subscription", "to": "Plan", "type": "ManyToOne", "index": true},
+    {"from": "PaymentMethod", "to": "Organization", "type": "ManyToOne", "index": true},
+    {"from": "Invoice", "to": "Organization", "type": "ManyToOne", "index": true},
+    {"from": "Invoice", "to": "Subscription", "type": "ManyToOne", "index": true}
   ]
 }
 ```
@@ -142,8 +142,8 @@ Track metered usage for consumption-based pricing.
     }
   ],
   "relationships": [
-    {"from": "UsageRecord", "to": "Organization", "type": "ManyToOne"},
-    {"from": "UsageLimit", "to": "Organization", "type": "ManyToOne"}
+    {"from": "UsageRecord", "to": "Organization", "type": "ManyToOne", "index": true},
+    {"from": "UsageLimit", "to": "Organization", "type": "ManyToOne", "index": true}
   ]
 }
 ```
