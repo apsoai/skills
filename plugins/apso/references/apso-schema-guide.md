@@ -25,8 +25,8 @@ apso deploy --no-wait                  # Trigger without waiting for completion
 ### Schema Management
 
 ```bash
-apso migrate                  # Test migrations locally (PGlite sandbox)
-apso migrate --apply          # Apply and update snapshot
+apso migrate                  # Check the change's SQL on an empty PGlite database
+apso migrate --apply          # Record the local snapshot (touches no database)
 apso migrate --reset          # Clear sandbox data
 apso migrate --sql            # Output raw SQL only
 apso schema validate          # Validate local .apsorc
@@ -507,7 +507,7 @@ cd my-api
 # Edit .apsorc with your schema
 apso generate
 apso dev                    # Local development
-apso migrate --apply        # Test migrations locally
+apso migrate                # Check the SQL on an empty PGlite database
 apso deploy                 # Deploy to AWS (RDS + Lambda + API Gateway)
 apso status                 # Check deployment status
 apso open                   # Open dashboard in browser
@@ -518,10 +518,12 @@ apso open                   # Open dashboard in browser
 ```bash
 # Edit .apsorc (add entities, fields, relationships)
 apso generate               # Regenerate code
-apso migrate                # Preview migration SQL
-apso migrate --apply        # Apply snapshot
-apso deploy                 # Deploy changes
+apso migrate                # Preview the SQL on an empty database
+# Write src/migrations/<timestamp>-<name>-migration.ts (schema-migration skill)
+apso deploy                 # Runs the committed migrations, then deploys
 ```
+
+Once a service is deployed, the deploy only changes the database through committed migration files, and the auto-generated SQL for a rename or type change drops data. See the `schema-migration` skill.
 
 ---
 

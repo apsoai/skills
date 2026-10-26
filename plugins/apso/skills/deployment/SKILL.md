@@ -117,11 +117,13 @@ This associates your local project with a service on the Apso platform.
 # Preview migration SQL in a PGlite sandbox
 apso migrate
 
-# If the SQL looks correct, apply the snapshot
+# If the SQL looks correct, record the new snapshot
 apso migrate --apply
 ```
 
-The migrate command runs your schema changes against a local PGlite database to catch errors before deploying to production.
+`apso migrate` checks that the schema change's SQL runs on an empty PGlite database. It does not write a migration file or touch any real database, and `--apply` only records the local snapshot.
+
+**Once the service holds data, the deploy only changes the database through committed migration files** (`src/migrations/*-migration.ts` for TypeScript). Without one, the deploy succeeds and leaves the old tables in place. Renames and type changes also need a hand-written migration, because the auto-generated SQL drops and re-adds them. Use the `schema-migration` skill for any schema change to a deployed service.
 
 ### Step 4: Deploy
 
@@ -219,7 +221,7 @@ apso migrate
 apso deploy
 ```
 
-The deploy command detects schema changes and runs migrations against the production database during deployment.
+On the first deploy the database is created from the schema. After that, the deploy runs the migration files committed in the project and nothing else, so write one for every schema change (see the `schema-migration` skill). The database changes before the new code goes live, so a rename or drop briefly breaks the running API unless it is split into expand and contract deploys.
 
 ## Environments
 

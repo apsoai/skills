@@ -136,12 +136,11 @@ When you modify `.apsorc`:
 # Regenerate code
 apso generate
 
-# Test migrations locally (PGlite sandbox)
+# Check the schema change's SQL on an empty PGlite database
 apso migrate
-
-# Apply migration snapshot
-apso migrate --apply
 ```
+
+After the first deploy, every schema change also needs a migration file, or the deploy leaves the database unchanged. Use the `schema-migration` skill.
 
 ## Deployment
 

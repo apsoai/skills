@@ -1,0 +1,13 @@
+schema_version: "1.1"
+name: migration-enum-replace
+tags: [migration]
+# refs is a symlink to the plugin's references/, so the skill can read them.
+# migration-check/ is run by scripts/pre-commit-evals.sh after the eval: it
+# applies the agent's migration to seeded rows and checks them.
+context:
+  add_dirs: [refs]
+execution:
+  prompt_file: prompt.md
+  max_turns: 20
+  allowed_tools: [Read, Glob, Grep, Skill, Write]
+graders: []

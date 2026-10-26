@@ -1,4 +1,4 @@
-NestJS Apso project. I need (1) `POST /projects/:id/archive`, and (2) to REPLACE the generated `GET /tasks` endpoint with my own response shape. Write the code and any schema change, then explain what you did.
+NestJS Apso project. I need (1) `POST /projects/:id/archive`, and (2) to REPLACE the generated `GET /tasks` endpoint with my own response shape. Write the files into the project (the controllers, services and any `.apsorc` change), then explain what you did.
 
 Current schema:
 

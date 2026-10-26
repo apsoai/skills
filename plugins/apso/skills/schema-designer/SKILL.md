@@ -135,6 +135,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/references/apso-schema-guide.md` for the complete fi
 ## Related Skills
 
 - `schema-review` — Audit an existing schema for normalization, indexing, and scale
+- `schema-migration` — Change the schema of a deployed service without losing data
 - `multi-tenancy` — Patterns for tenant data isolation
 - `auth-entities` — Authentication entity patterns
 - `audit-trail` — Track who changed what and when
