@@ -25,10 +25,9 @@ apso deploy --no-wait                  # Trigger without waiting for completion
 ### Schema Management
 
 ```bash
-apso migrate                  # Check the change's SQL on an empty PGlite database
-apso migrate --apply          # Record the local snapshot (touches no database)
-apso migrate --reset          # Clear sandbox data
-apso migrate --sql            # Output raw SQL only
+apso migrate generate --baseline deployed.apsorc   # TypeORM migration from the deployed schema (TypeScript)
+apso migrate verify --baseline deployed.apsorc --migration <file> --seed seed.sql   # Run it on seeded rows, check data loss and drift
+apso migrate --sql            # Print the DDL for the current .apsorc
 apso schema validate          # Validate local .apsorc
 apso schema validate --local  # Skip server-side validation
 apso schema diff              # Diff local vs remote schema
@@ -507,7 +506,6 @@ cd my-api
 # Edit .apsorc with your schema
 apso generate
 apso dev                    # Local development
-apso migrate                # Check the SQL on an empty PGlite database
 apso deploy                 # Deploy to AWS (RDS + Lambda + API Gateway)
 apso status                 # Check deployment status
 apso open                   # Open dashboard in browser
@@ -518,12 +516,13 @@ apso open                   # Open dashboard in browser
 ```bash
 # Edit .apsorc (add entities, fields, relationships)
 apso generate               # Regenerate code
-apso migrate                # Preview the SQL on an empty database
-# Write src/migrations/<timestamp>-<name>-migration.ts (schema-migration skill)
+apso migrate generate --baseline deployed.apsorc   # TypeORM writes src/migrations/<ts>-SchemaUpdate-migration.ts
+# Review and patch it, then verify on seeded rows (schema-migration skill)
+apso migrate verify --baseline deployed.apsorc --migration src/migrations/<file> --seed seed.sql
 apso deploy                 # Runs the committed migrations, then deploys
 ```
 
-Once a service is deployed, the deploy only changes the database through committed migration files, and the auto-generated SQL for a rename or type change drops data. See the `schema-migration` skill.
+Once a service is deployed, the deploy only changes the database through committed migration files. TypeORM generates them, but its output drops data on type changes, fails on removed enum values, and builds a renamed entity as an empty table. See the `schema-migration` skill.
 
 ---
 

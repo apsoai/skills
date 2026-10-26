@@ -114,16 +114,14 @@ This associates your local project with a service on the Apso platform.
 ### Step 3: Test Migrations Locally
 
 ```bash
-# Preview migration SQL in a PGlite sandbox
-apso migrate
+# Generate the migration with TypeORM, from the deployed schema to the new entities
+apso migrate generate --baseline deployed.apsorc
 
-# If the SQL looks correct, record the new snapshot
-apso migrate --apply
+# Run it on a local copy of the deployed schema with seeded rows, then check for drift
+apso migrate verify --baseline deployed.apsorc --migration src/migrations/<file> --seed seed.sql
 ```
 
-`apso migrate` checks that the schema change's SQL runs on an empty PGlite database. It does not write a migration file or touch any real database, and `--apply` only records the local snapshot.
-
-**Once the service holds data, the deploy only changes the database through committed migration files** (`src/migrations/*-migration.ts` for TypeScript). Without one, the deploy succeeds and leaves the old tables in place. Renames and type changes also need a hand-written migration, because the auto-generated SQL drops and re-adds them. Use the `schema-migration` skill for any schema change to a deployed service.
+**Once the service holds data, the deploy only changes the database through committed migration files** (`src/migrations/*-migration.ts` for TypeScript). Without one, the deploy succeeds and leaves the old tables in place. TypeORM's generated file drops data on type changes, fails on removed enum values, and builds a renamed entity as an empty table. Use the `schema-migration` skill for any schema change to a deployed service.
 
 ### Step 4: Deploy
 
@@ -214,8 +212,9 @@ When you change your schema after the initial deploy:
 # Regenerate code
 apso generate
 
-# Test migration locally
-apso migrate
+# Generate and verify the migration (schema-migration skill)
+apso migrate generate --baseline deployed.apsorc
+apso migrate verify --baseline deployed.apsorc --migration src/migrations/<file> --seed seed.sql
 
 # Deploy changes
 apso deploy

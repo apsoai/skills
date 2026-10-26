@@ -136,11 +136,11 @@ When you modify `.apsorc`:
 # Regenerate code
 apso generate
 
-# Check the schema change's SQL on an empty PGlite database
-apso migrate
+# After the first deploy: generate the migration with TypeORM from the deployed schema
+apso migrate generate --baseline deployed.apsorc
 ```
 
-After the first deploy, every schema change also needs a migration file, or the deploy leaves the database unchanged. Use the `schema-migration` skill.
+After the first deploy, every schema change also needs a committed migration file, or the deploy leaves the database unchanged. TypeORM's generated file can lose data on renames, type changes and enum changes; use the `schema-migration` skill to review and verify it.
 
 ## Deployment
 
