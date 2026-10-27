@@ -1,7 +1,7 @@
 ---
 name: schema-migration
 category: data
-description: Change the schema of an Apso service that is already deployed or holds data, without losing or breaking that data. Generates the migration with TypeORM, reviews it for statements that lose data or fail on real rows, patches only those, and verifies it against seeded rows. Triggers on "rename a field", "rename an entity/table", "make this field required", "change the type of", "remove an enum value", "add a unique constraint", "drop this column", "migrate my schema", "write a migration", "review this migration", "change my schema in production", or any schema edit to a service that has users or data.
+description: Change the schema of an Apso service that is already deployed or holds data, without losing or breaking that data, including moving data between columns and tables. Generates the migration with TypeORM, reviews it for statements that lose data or fail on real rows, patches only those, and verifies it against seeded rows. Triggers on "rename a field", "rename an entity/table", "make this field required", "change the type of", "remove an enum value", "add a unique constraint", "drop this column", "move this field to its own entity", "make this many-to-many", "split this field", "merge these fields", "migrate my schema", "write a migration", "review this migration", "change my schema in production", or any schema edit to a service that has users or data.
 ---
 
 # Schema Migration
@@ -15,7 +15,7 @@ Use `schema-designer` for a new schema with no data. Use this skill as soon as t
 1. **The deploy only runs migration files you commit.** A TypeScript service's deploy runs `npm run db:migrate`, which executes `src/migrations/*-migration.ts`. A file named anything else is never loaded. With no migration file the deploy succeeds, changes nothing in the database, and the new code runs against the old tables.
 2. **TypeORM generates the migration.** `apso migrate generate --baseline <deployed .apsorc>` builds the deployed schema in a local PGlite database, diffs the project's entities against it with TypeORM's `migration:generate`, and writes `src/migrations/<timestamp>-SchemaUpdate-migration.ts`. The editor's in-browser migration step does the same. Keep TypeORM's file; patch it.
 3. **TypeORM diffs schemas, not data.** It does not know the table has rows. The statements it gets wrong are listed under "Review" below. Newer CLIs print them as `WARN <CODE>` lines.
-4. **`apso migrate verify` proves it.** It runs the migration on a fresh copy of the deployed schema and then checks for drift: TypeORM must find nothing left to change. With `--seed seed.sql` it inserts rows first and fails if the migration loses any row or value.
+4. **`apso migrate verify` proves it.** It runs the migration on a fresh copy of the deployed schema and then checks for drift: TypeORM must find nothing left to change. With `--seed seed.sql` it inserts rows first and fails if the migration loses any row or value. Values copied into a table the migration creates count as kept. `--check checks.sql` runs your own assertions after the migration.
 5. **The schema changes before the new code deploys.** For a minute or two the old code runs against the new schema. See "Expand, then contract".
 
 Bare `apso migrate` (no subcommand) is the older snapshot preview. It runs on an empty database and ignores enum values; do not use it to judge a TypeScript migration.
@@ -27,7 +27,7 @@ Bare `apso migrate` (no subcommand) is the older snapshot preview. It runs on an
 3. **Generate:** `apso migrate generate --baseline deployed.apsorc`.
 4. **Review** every statement in `up()` against the table below. For each hit, patch that statement and leave the rest of TypeORM's output alone. Ask the user wherever intent is ambiguous (is this a rename or a drop? what value do existing rows get? which duplicate wins?). Never invent a backfill value.
 5. **Patch `down()`** to reverse your patch.
-6. **Seed and verify:** write `seed.sql` with INSERTs into the deployed schema that look like production, including the awkward rows: nulls, duplicates, values outside the new enum, text that will not cast. Then `apso migrate verify --baseline deployed.apsorc --migration src/migrations/<file> --seed seed.sql`. Fix until it passes. If a loss is deliberate and the user agreed, rerun with `--accept-loss`.
+6. **Seed and verify:** write `seed.sql` with INSERTs into the deployed schema that look like production, including the awkward rows: nulls, duplicates, values outside the new enum, text that will not cast. Then `apso migrate verify --baseline deployed.apsorc --migration src/migrations/<file> --seed seed.sql`. Fix until it passes. When data is transformed rather than copied (a split or a merge), the check can't follow it: write `checks.sql` proving the new columns hold the old data and add `--check checks.sql --accept-loss contact.fullName` (the dropped source). Use `--accept-loss` for a real loss only when the user agreed.
 7. **Report to the user** (see the end).
 
 If you cannot run the CLI (no shell, or you were handed a generated file), do steps 4, 5 and 7 by reading the file, and give the user the verify command to run.
@@ -36,6 +36,7 @@ If you cannot run the CLI (no shell, or you were handed a generated file), do st
 
 | TypeORM writes | On real rows | CLI code | Patch |
 |---|---|---|---|
+| `CREATE TABLE "new"` and `DROP COLUMN` on an existing table | The dropped values never reach the new table | `DROPS_COLUMN` (names the new table) | Copy with `INSERT ... SELECT` before the drop (see "Moving data") |
 | `DROP COLUMN "x"` and `ADD "x" <new type>` | Every value is deleted | `TYPE_CHANGE_DROPS_DATA` | One `ALTER COLUMN "x" TYPE ... USING <guarded cast>` |
 | `DROP COLUMN "a"` and `ADD "b"` on one table | `a`'s data is deleted | `POSSIBLE_RENAME` | If it is a rename: `RENAME COLUMN "a" TO "b"`, then any type or null change |
 | `CREATE TABLE "new"` plus a foreign key from an existing table to it | FK fails on existing rows; the old table is left behind with its data | `FOREIGN_KEY_TO_NEW_TABLE` | Entity rename: replace the `CREATE TABLE` with `RENAME TO` and rename its id sequence |
@@ -84,6 +85,39 @@ await queryRunner.query(`DO $$ BEGIN IF EXISTS (SELECT 1 FROM "contact" GROUP BY
 ```
 
 Rules for every patch: raw SQL through `queryRunner.query`, one statement per call; keep the class name and `name` TypeORM wrote; the whole file runs in one transaction, so a failure rolls it all back.
+
+## Moving data
+
+TypeORM creates the new table or columns empty and drops the old ones. Put the copy between the two: after the `CREATE TABLE` or `ADD`, before the `DROP`. Copy every row, then let `verify --seed` confirm it.
+
+**Field to its own entity** (`Contact.phone` to a `PhoneNumber` entity under Contact):
+```ts
+await queryRunner.query(`INSERT INTO "phone_number" ("number", "contactId") SELECT "phone", "id" FROM "contact" WHERE "phone" IS NOT NULL`);
+```
+Tell the user what new required columns get (here `label` takes its default, `mobile`). In `down()`, add the column back and copy one value per parent: `UPDATE "contact" c SET "phone" = (SELECT "number" FROM "phone_number" p WHERE p."contactId" = c."id" ORDER BY p."id" LIMIT 1)`.
+
+**Many-to-one to many-to-many** (Contact to Company): TypeORM creates `contact_companies_company` and drops `contact.companyId`. Before the drop:
+```ts
+await queryRunner.query(`INSERT INTO "contact_companies_company" ("contactId", "companyId") SELECT "id", "companyId" FROM "contact" WHERE "companyId" IS NOT NULL`);
+```
+
+**Field to an existing table** (`Contact.companyDomain` to `Company.domain`): several contacts can disagree. Ask the user which value wins, then `UPDATE "company" c SET "domain" = ...` from the rows they choose. Verify can't follow data into an existing table, so prove it with `--check`.
+
+**Split one field** (`fullName` into `firstName` and `lastName`): TypeORM drops `fullName` and adds `firstName NOT NULL`, which fails on existing rows. Replace its `up()` with:
+```ts
+await queryRunner.query(`ALTER TABLE "contact" ADD "firstName" text`);
+await queryRunner.query(`ALTER TABLE "contact" ADD "lastName" text`);
+await queryRunner.query(`UPDATE "contact" SET "firstName" = split_part(btrim("fullName"), ' ', 1), "lastName" = NULLIF(btrim(substr(btrim("fullName"), length(split_part(btrim("fullName"), ' ', 1)) + 1)), '')`);
+await queryRunner.query(`ALTER TABLE "contact" ALTER COLUMN "firstName" SET NOT NULL`);
+await queryRunner.query(`ALTER TABLE "contact" DROP COLUMN "fullName"`);
+```
+Tell the user how single names ("Cher") and longer ones ("Ludwig van Beethoven") split. Prove it in `checks.sql`:
+```sql
+SELECT bool_and(btrim(concat_ws(' ', "firstName", "lastName")) <> '') AS ok, 'every contact keeps a name' AS label FROM "contact";
+```
+For an exact check, seed known rows and compare by id: `... = CASE "id" WHEN 1 THEN 'Ada Lovelace' ... END`.
+
+**Merge fields** (`firstName` and `lastName` into `fullName`): add `fullName` nullable, `UPDATE ... SET "fullName" = btrim(concat_ws(' ', "firstName", "lastName"))`, `SET NOT NULL`, then drop the two. Check it the same way.
 
 ## Expand, then contract
 
