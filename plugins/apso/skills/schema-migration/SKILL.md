@@ -1,130 +1,91 @@
 ---
 name: schema-migration
 category: data
-description: Change the schema of an Apso service that is already deployed or holds data, without losing or breaking that data, including moving data between columns and tables. Generates the migration with TypeORM, reviews it for statements that lose data or fail on real rows, patches only those, and verifies it against seeded rows. Triggers on "rename a field", "rename an entity/table", "make this field required", "change the type of", "remove an enum value", "add a unique constraint", "drop this column", "move this field to its own entity", "make this many-to-many", "split this field", "merge these fields", "migrate my schema", "write a migration", "review this migration", "change my schema in production", or any schema edit to a service that has users or data.
+description: Change the schema of an Apso service that is already deployed or holds data, without losing or breaking that data, including moving data between columns and tables. Runs apso migrate, answers its questions (rename or drop, how a field splits, what replaces a removed enum value, what existing rows get), lets the CLI write the migration from those answers, and verifies it against seeded rows. Triggers on "rename a field", "rename an entity/table", "make this field required", "change the type of", "remove an enum value", "add a unique constraint", "drop this column", "move this field to its own entity", "make this many-to-many", "split this field", "merge these fields", "migrate my schema", "write a migration", "review this migration", "change my schema in production", or any schema edit to a service that has users or data.
 ---
 
 # Schema Migration
 
-Change a live schema safely. Editing `.apsorc` changes the generated code; only a migration file changes the database. TypeORM generates that file from the entities. This skill reviews what it generated, rewrites the statements that would lose data or fail on real rows, and proves the result against seeded data.
+Change a live schema safely. Editing `.apsorc` changes the generated code; only a migration file changes the database. `apso migrate` writes that file. Your job is to answer the questions it asks, because the schema alone can't say whether a missing field was renamed or dropped, how a field splits, or what existing rows should get.
 
 Use `schema-designer` for a new schema with no data. Use this skill as soon as the service has been deployed or holds rows that matter.
 
 ## How Apso migrations work
 
-1. **The deploy only runs migration files you commit.** A TypeScript service's deploy runs `npm run db:migrate`, which executes `src/migrations/*-migration.ts`. A file named anything else is never loaded. With no migration file the deploy succeeds, changes nothing in the database, and the new code runs against the old tables.
-2. **TypeORM generates the migration.** `apso migrate generate --baseline <deployed .apsorc>` builds the deployed schema in a local PGlite database, diffs the project's entities against it with TypeORM's `migration:generate`, and writes `src/migrations/<timestamp>-SchemaUpdate-migration.ts`. The editor's in-browser migration step does the same. Keep TypeORM's file; patch it.
-3. **TypeORM diffs schemas, not data.** It does not know the table has rows. The statements it gets wrong are listed under "Review" below. Newer CLIs print them as `WARN <CODE>` lines.
-4. **`apso migrate verify` proves it.** It runs the migration on a fresh copy of the deployed schema and then checks for drift: TypeORM must find nothing left to change. With `--seed seed.sql` it inserts rows first and fails if the migration loses any row or value. Values copied into a table the migration creates count as kept. `--check checks.sql` runs your own assertions after the migration.
+1. **The deploy only runs migration files you commit.** A TypeScript service's deploy runs `npm run db:migrate`, which executes `src/migrations/*-migration.ts`. With no migration file the deploy succeeds, changes nothing in the database, and the new code runs against the old tables.
+2. **`apso migrate` plans, then writes.** It compares the deployed `.apsorc` with the current one. Every change whose intent is ambiguous becomes a question in `.apso/migration-plan.json`. Once all are answered, it writes `src/migrations/<timestamp>-SchemaUpdate-migration.ts` (an Alembic revision for Python, a goose file for Go) plus `<same name>.plan.json` beside it, and tests it on a local PGlite copy of the deployed schema.
+3. **The same answers always give the same SQL.** You never write or patch SQL by hand. If the migration is wrong, change an answer and run it again.
+4. **The baseline is found for you.** The first time, pass the deployed schema with `--baseline deployed.apsorc` (`git show <deployed commit>:.apsorc > deployed.apsorc`, or `apso schema pull` into a scratch dir). After that, `apso migrate` starts from the schema the last planned migration produced.
 5. **The schema changes before the new code deploys.** For a minute or two the old code runs against the new schema. See "Expand, then contract".
-
-Bare `apso migrate` (no subcommand) is the older snapshot preview. It runs on an empty database and ignores enum values; do not use it to judge a TypeScript migration.
 
 ## Workflow
 
-1. **Get the deployed schema** as a file, e.g. `git show <deployed commit>:.apsorc > deployed.apsorc` or `apso schema pull` into a scratch dir.
-2. **Edit `.apsorc`**, then `apso generate`. The final `.apsorc` must describe the database you want, column for column.
-3. **Generate:** `apso migrate generate --baseline deployed.apsorc`.
-4. **Review** every statement in `up()` against the table below. For each hit, patch that statement and leave the rest of TypeORM's output alone. Ask the user wherever intent is ambiguous (is this a rename or a drop? what value do existing rows get? which duplicate wins?). Never invent a backfill value.
-5. **Patch `down()`** to reverse your patch.
-6. **Seed and verify:** write `seed.sql` with INSERTs into the deployed schema that look like production, including the awkward rows: nulls, duplicates, values outside the new enum, text that will not cast. Then `apso migrate verify --baseline deployed.apsorc --migration src/migrations/<file> --seed seed.sql`. Fix until it passes. When data is transformed rather than copied (a split or a merge), the check can't follow it: write `checks.sql` proving the new columns hold the old data and add `--check checks.sql --accept-loss contact.fullName` (the dropped source). Use `--accept-loss` for a real loss only when the user agreed.
-7. **Report to the user** (see the end).
+1. **Edit `.apsorc`** so it describes the database you want, column for column.
+2. **Run `apso migrate`** (add `--baseline deployed.apsorc` the first time). In a terminal it asks each question. Without a terminal, or with `--json`, it prints the open questions as JSON and exits 2:
+   ```json
+   { "status": "questions", "plan": ".apso/migration-plan.json",
+     "open": [{ "id": "field:Contact.phone", "kind": "removedField",
+                "subject": "Field Contact.phone (varchar) is gone",
+                "options": ["rename:mobilePhone", "drop"], "suggested": "rename:mobilePhone",
+                "labels": { "rename:mobilePhone": "Renamed to mobilePhone (keeps the data)", "drop": "Dropped (deletes its data)" } }] }
+   ```
+3. **Answer every question** (see below). Pass simple answers as flags: `apso migrate --answer field:Contact.phone=rename:mobilePhone`. For `sql` and `split:` answers, also set the question's `"sql"` in `.apso/migration-plan.json`: a string, or one expression per split field. You can instead write `"answer"` (and `"sql"`) straight into the plan file and run `apso migrate` with no flags.
+4. **Run `apso migrate` again** until it prints `"status": "written"`. Answers can raise new questions (dropping a field can leave a required one to backfill).
+5. **Seed and verify:** write `seed.sql` with INSERTs into the deployed schema that look like production, including the awkward rows: nulls, duplicates, values outside the new enum, text that will not cast. Run `apso migrate verify --seed seed.sql`. It fails if any row or value is lost; values copied into a table the migration creates count as kept. For a split or a merge, add `checks.sql` (SELECTs returning a boolean `ok` and a `label`) with `--check checks.sql`. Use `--accept-loss <table.column>` only for a loss the user agreed to.
+6. **Commit** the `.apsorc`, the migration and its `.plan.json`. Then report to the user (see the end).
 
-If you cannot run the CLI (no shell, or you were handed a generated file), do steps 4, 5 and 7 by reading the file, and give the user the verify command to run.
+If you cannot run the CLI (no shell, or you were handed the questions), answer them in `.apso/migration-plan.json` by reading it, and give the user the `apso migrate` command to run next.
 
-## Review: what TypeORM gets wrong
+## Answering the questions
 
-| TypeORM writes | On real rows | CLI code | Patch |
+| Kind | Asked when | Options | How to answer |
 |---|---|---|---|
-| `CREATE TABLE "new"` and `DROP COLUMN` on an existing table | The dropped values never reach the new table | `DROPS_COLUMN` (names the new table) | Copy with `INSERT ... SELECT` before the drop (see "Moving data") |
-| `DROP COLUMN "x"` and `ADD "x" <new type>` | Every value is deleted | `TYPE_CHANGE_DROPS_DATA` | One `ALTER COLUMN "x" TYPE ... USING <guarded cast>` |
-| `DROP COLUMN "a"` and `ADD "b"` on one table | `a`'s data is deleted | `POSSIBLE_RENAME` | If it is a rename: `RENAME COLUMN "a" TO "b"`, then any type or null change |
-| `CREATE TABLE "new"` plus a foreign key from an existing table to it | FK fails on existing rows; the old table is left behind with its data | `FOREIGN_KEY_TO_NEW_TABLE` | Entity rename: replace the `CREATE TABLE` with `RENAME TO` and rename its id sequence |
-| `ALTER TYPE ... RENAME TO "..._old"`, new enum, `USING "x"::"text"::<new enum>` | Fails on rows holding a removed value | `ENUM_VALUES_REMOVED` | Map removed values in the `USING` clause |
-| `ADD "x" ... NOT NULL DEFAULT v` | Every existing row silently gets `v` | `DEFAULT_BACKFILLS_ROWS` | Keep it only if the user confirms `v` is right for existing rows; otherwise add nullable, backfill, `SET NOT NULL` |
-| `ADD "x" ... NOT NULL` with no default | Fails if the table has rows | `NOT_NULL_WITHOUT_BACKFILL` | Add nullable, backfill with the user's value, `SET NOT NULL` |
-| `ALTER COLUMN "x" SET NOT NULL` | Fails on null rows | `SET_NOT_NULL` | Backfill first |
-| `CREATE UNIQUE INDEX` / `ADD CONSTRAINT ... UNIQUE` | Fails on duplicates | `UNIQUE_ON_EXISTING_ROWS` | Check first and stop with a clear message; never delete rows without the user's rule |
-| `ALTER COLUMN "x" TYPE ...` | Fails on values the cast cannot convert | `TYPE_CAST` | Guard the cast |
-| `DROP COLUMN` / `DROP TABLE` alone | Data is gone | `DROPS_COLUMN` / `DROPS_TABLE` | Confirm with the user, name what is lost, suggest a copy first |
+| `removedField` | A field is gone | `rename:<field>`, `split:<a>,<b>`, `move:<Entity>.<field>`, `drop` | `rename` when the user renamed it (keeps the data). `split` with one SQL expression per new field. `move` copies the values into the new entity. `drop` deletes the data: only when the user said so |
+| `removedEntity` | An entity is gone | `rename:<Entity>`, `drop` | `rename` keeps the rows and every link to them |
+| `enumValue` | An enum value is removed | the remaining values | The value existing rows move to. Get the mapping from the user |
+| `backfill` | A new required field, or a field made required, on a table with rows | the enum values, a literal, or `sql` | What existing rows get. Never invent it; ask if the user didn't say |
+| `cast` | A field changes type | `cast`, `sql` | `cast` converts as is and fails on values that don't convert. `sql` with a guarded expression turns bad values into NULL instead |
+| `relation` | ManyToOne becomes ManyToMany, or similar | `copy-links`, `drop-links` | `copy-links` keeps every existing link |
 
-TypeORM already turns a single matching drop and add into `RENAME COLUMN`. Leave those alone.
+`suggested` is set only when exactly one reading fits, and it still needs an answer. When the user's request makes the intent plain ("rename phone to mobilePhone", "archived contacts become closed"), answer without asking. When it doesn't, ask the user. Never answer `drop` or `drop-links` on your own: data is gone after the deploy.
 
-## Patches
+## SQL answers
 
-**Type change.** Replace the drop and add:
-```ts
-await queryRunner.query(`ALTER TABLE "contact" ALTER COLUMN "score" TYPE integer USING CASE WHEN btrim("score") ~ '^-?[0-9]+$' THEN btrim("score")::integer END`);
+Write expressions over the old columns of the same row, quoted the way Postgres stores them (`"fullName"`, camelCase).
+
+**Split** (`fullName` into `firstName` and `lastName`; the CLI's `splitDefaults` gives this starting point):
+```json
+"sql": {
+  "firstName": "split_part(btrim(\"fullName\"), ' ', 1)",
+  "lastName": "NULLIF(btrim(substr(btrim(\"fullName\"), length(split_part(btrim(\"fullName\"), ' ', 1)) + 1)), '')"
+}
 ```
-Values that do not parse become `NULL`, so the column must be nullable, and `verify --seed` reports them as lost. Tell the user how to count them first (`SELECT count(*) FROM "contact" WHERE btrim("score") !~ '^-?[0-9]+$'`), and either get their agreement, keep the old column as a copy, or stop the migration with `RAISE EXCEPTION`.
-
-**Entity rename** (`Company` to `Organization`). TypeORM renames the foreign key column correctly but creates `organization` empty. Replace its `CREATE TABLE "organization" (...)` with:
-```ts
-await queryRunner.query(`ALTER TABLE "company" RENAME TO "organization"`);
-await queryRunner.query(`ALTER SEQUENCE "company_id_seq" RENAME TO "organization_id_seq"`);
-```
-Also rename the entity's enum types (`company_<field>_enum` to `organization_<field>_enum`). Keep TypeORM's index and constraint statements; the drift check confirms the rest. Update `.apsorc`: the entity name, every relationship's `from` or `to`, and any `scopeBy` that named the old foreign key.
-
-**Enum value removed or renamed.** Keep TypeORM's type swap; change only its cast:
-```ts
-await queryRunner.query(`ALTER TABLE "contact" ALTER COLUMN "status" TYPE "public"."contact_status_enum" USING (CASE "status"::text WHEN 'archived' THEN 'closed' ELSE "status"::text END)::"public"."contact_status_enum"`);
-```
-Get the mapping from the user. Mirror it in `down()` if the old value should come back.
-
-**Required field with no default.** Replace the single `ADD ... NOT NULL` with:
-```ts
-await queryRunner.query(`ALTER TABLE "company" ADD "region" "public"."company_region_enum"`);
-await queryRunner.query(`UPDATE "company" SET "region" = 'us' WHERE "region" IS NULL`);
-await queryRunner.query(`ALTER TABLE "company" ALTER COLUMN "region" SET NOT NULL`);
-```
-For an enum field the CLI sets a database default (the first value unless `.apsorc` gives one), so TypeORM writes `NOT NULL DEFAULT 'us'`. That backfills every row with `us`. Keep it when the user confirms `us` is right for existing rows.
-
-**Unique constraint.** Put a check before TypeORM's statement:
-```ts
-await queryRunner.query(`DO $$ BEGIN IF EXISTS (SELECT 1 FROM "contact" GROUP BY "email" HAVING count(*) > 1) THEN RAISE EXCEPTION 'contact.email has duplicates; resolve them before adding the unique index'; END IF; END $$`);
-```
-
-Rules for every patch: raw SQL through `queryRunner.query`, one statement per call; keep the class name and `name` TypeORM wrote; the whole file runs in one transaction, so a failure rolls it all back.
-
-## Moving data
-
-TypeORM creates the new table or columns empty and drops the old ones. Put the copy between the two: after the `CREATE TABLE` or `ADD`, before the `DROP`. Copy every row, then let `verify --seed` confirm it.
-
-**Field to its own entity** (`Contact.phone` to a `PhoneNumber` entity under Contact):
-```ts
-await queryRunner.query(`INSERT INTO "phone_number" ("number", "contactId") SELECT "phone", "id" FROM "contact" WHERE "phone" IS NOT NULL`);
-```
-Tell the user what new required columns get (here `label` takes its default, `mobile`). In `down()`, add the column back and copy one value per parent: `UPDATE "contact" c SET "phone" = (SELECT "number" FROM "phone_number" p WHERE p."contactId" = c."id" ORDER BY p."id" LIMIT 1)`.
-
-**Many-to-one to many-to-many** (Contact to Company): TypeORM creates `contact_companies_company` and drops `contact.companyId`. Before the drop:
-```ts
-await queryRunner.query(`INSERT INTO "contact_companies_company" ("contactId", "companyId") SELECT "id", "companyId" FROM "contact" WHERE "companyId" IS NOT NULL`);
-```
-
-**Field to an existing table** (`Contact.companyDomain` to `Company.domain`): several contacts can disagree. Ask the user which value wins, then `UPDATE "company" c SET "domain" = ...` from the rows they choose. Verify can't follow data into an existing table, so prove it with `--check`.
-
-**Split one field** (`fullName` into `firstName` and `lastName`): TypeORM drops `fullName` and adds `firstName NOT NULL`, which fails on existing rows. Replace its `up()` with:
-```ts
-await queryRunner.query(`ALTER TABLE "contact" ADD "firstName" text`);
-await queryRunner.query(`ALTER TABLE "contact" ADD "lastName" text`);
-await queryRunner.query(`UPDATE "contact" SET "firstName" = split_part(btrim("fullName"), ' ', 1), "lastName" = NULLIF(btrim(substr(btrim("fullName"), length(split_part(btrim("fullName"), ' ', 1)) + 1)), '')`);
-await queryRunner.query(`ALTER TABLE "contact" ALTER COLUMN "firstName" SET NOT NULL`);
-await queryRunner.query(`ALTER TABLE "contact" DROP COLUMN "fullName"`);
-```
-Tell the user how single names ("Cher") and longer ones ("Ludwig van Beethoven") split. Prove it in `checks.sql`:
+Tell the user how single names ("Cher") and longer ones ("Ludwig van Beethoven") split, and prove it in `checks.sql`:
 ```sql
 SELECT bool_and(btrim(concat_ws(' ', "firstName", "lastName")) <> '') AS ok, 'every contact keeps a name' AS label FROM "contact";
 ```
-For an exact check, seed known rows and compare by id: `... = CASE "id" WHEN 1 THEN 'Ada Lovelace' ... END`.
 
-**Merge fields** (`firstName` and `lastName` into `fullName`): add `fullName` nullable, `UPDATE ... SET "fullName" = btrim(concat_ws(' ', "firstName", "lastName"))`, `SET NOT NULL`, then drop the two. Check it the same way.
+**Type change** (`score` text to integer) with values that may not parse:
+```json
+"answer": "sql",
+"sql": "CASE WHEN btrim(\"score\") ~ '^-?[0-9]+$' THEN btrim(\"score\")::integer END"
+```
+Values that don't parse become NULL and `verify --seed` reports them as lost. Tell the user how to count them first (`SELECT count(*) FROM "contact" WHERE btrim("score") !~ '^-?[0-9]+$'`) and get their agreement, or keep the old column as a copy.
+
+**Backfill from other columns:** `"answer": "sql", "sql": "lower(\"email\")"`.
+
+## Things a plan does not cover
+
+- **A unique constraint on existing rows** fails if there are duplicates. Check first (`SELECT "email", count(*) FROM "contact" GROUP BY 1 HAVING count(*) > 1`), and resolve them with the user's rule before deploying.
+- **A field moved into an existing table** (`Contact.companyDomain` to `Company.domain`): several contacts can disagree. Ask which value wins and prove the result with `--check`.
+- **Merging fields** (`firstName` and `lastName` into `fullName`): answer the backfill for `fullName` with `btrim(concat_ws(' ', "firstName", "lastName"))`, and the drops for the two old fields only once the user agrees.
 
 ## Expand, then contract
 
 Because the database changes before the new code goes live, a rename or drop breaks the running API for a minute or two. That is fine for an app with no users yet; tell the user and let them choose. For a live app, split it across two deploys:
 
 1. **Expand.** Add the new column or table, backfill it, keep the old one. Deploy code that writes both and reads the new one.
-2. **Contract.** After that deploy is live, drop the old column in a second migration and deploy again.
+2. **Contract.** After that deploy is live, remove the old field from `.apsorc` and run `apso migrate` again for a second migration.
 
 ## Database names
 
@@ -136,16 +97,12 @@ Because the database changes before the new code goes live, a rename or drop bre
 | `enum` field `status` on `contact` | type `"public"."contact_status_enum"` |
 | `id` | `"id" SERIAL`, sequence `"<table>_id_seq"` |
 
-## Python and Go services
-
-`apso migrate generate` and `verify` are TypeScript only. Python services use Alembic: `alembic revision --autogenerate`, then apply the same review to the generated `op.*` calls (Alembic also turns renames into drop and add), and `alembic check` for drift. Go services use goose SQL files in `migrations/`; write them with the patches above and test them against a seeded copy.
-
 ## Report to the user
 
 End with:
 - the `.apsorc` change and the migration file path;
-- each statement you changed in TypeORM's output and why;
-- what happens to existing rows, including values that become `NULL` or are lost;
-- anything you need from them (a backfill value, an enum mapping, a duplicate rule, approval to drop);
+- each question and the answer you gave, and which ones you asked them about;
+- what happens to existing rows, including values that become NULL or are lost;
+- anything still needed from them (a backfill value, an enum mapping, a duplicate rule, approval to drop);
 - the verify result, or the command to run it;
 - the deploy order, and whether to use expand and contract.

@@ -131,27 +131,121 @@ I changed `.apsorc` to this:
 }
 ```
 
-Then I ran `apso migrate generate --baseline deployed.apsorc`, which wrote `src/migrations/1793104767166-SchemaUpdate-migration.ts`:
+Then I ran `apso migrate`. It saved `.apso/migration-plan.json` and printed:
 
-```ts
-import { MigrationInterface, QueryRunner } from "typeorm";
-
-export class SchemaUpdateMigration1793104767166 implements MigrationInterface {
-    name = 'SchemaUpdateMigration1793104767166'
-
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE "contact" DROP COLUMN "fullName"`);
-        await queryRunner.query(`ALTER TABLE "contact" ADD "firstName" text NOT NULL`);
-        await queryRunner.query(`ALTER TABLE "contact" ADD "lastName" text`);
+```json
+{
+  "status": "questions",
+  "plan": ".apso/migration-plan.json",
+  "baseline": "deployed.apsorc",
+  "open": [
+    {
+      "id": "field:Contact.fullName",
+      "kind": "removedField",
+      "subject": "Field Contact.fullName (text) is gone",
+      "options": [
+        "rename:firstName",
+        "rename:lastName",
+        "split:firstName,lastName",
+        "drop"
+      ],
+      "labels": {
+        "rename:firstName": "Renamed to firstName (keeps the data)",
+        "rename:lastName": "Renamed to lastName (keeps the data)",
+        "split:firstName,lastName": "Split into firstName and lastName (you give the rule)",
+        "drop": "Dropped (deletes its data)"
+      },
+      "splitDefaults": {
+        "split:firstName,lastName": {
+          "firstName": "split_part(btrim(\"fullName\"), ' ', 1)",
+          "lastName": "NULLIF(btrim(substr(btrim(\"fullName\"), length(split_part(btrim(\"fullName\"), ' ', 1)) + 1)), '')"
+        }
+      }
     }
-
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE "contact" DROP COLUMN "lastName"`);
-        await queryRunner.query(`ALTER TABLE "contact" DROP COLUMN "firstName"`);
-        await queryRunner.query(`ALTER TABLE "contact" ADD "fullName" text NOT NULL`);
-    }
-
+  ],
+  "next": "Rerun apso migrate --answer <id>=<option> for each. For \"sql\" and \"split:\" answers, also set the question's \"sql\" in the plan file: a string, or one expression per split field."
 }
 ```
 
-Get this ready to deploy. Write `.apsorc` and the final migration file into the project, then print both files.
+This is `.apso/migration-plan.json`:
+
+```json
+{
+  "version": 1,
+  "from": "sha256:420e1c3e50d1390f936be4978f4da8e3f87ba6eb834d94ce95be401f44e00d65",
+  "to": "sha256:0a1af8b4ce652846698ac6ea489fed54c55af3f0181e6aa7d4e71f97813c6b44",
+  "questions": [
+    {
+      "id": "field:Contact.fullName",
+      "kind": "removedField",
+      "subject": "Field Contact.fullName (text) is gone",
+      "options": [
+        "rename:firstName",
+        "rename:lastName",
+        "split:firstName,lastName",
+        "drop"
+      ]
+    }
+  ],
+  "before": {
+    "version": 2,
+    "rootFolder": "src",
+    "apiType": "Rest",
+    "entities": [
+      {
+        "name": "Company",
+        "created_at": true,
+        "updated_at": true,
+        "fields": [
+          {
+            "name": "name",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "name": "Contact",
+        "created_at": true,
+        "updated_at": true,
+        "fields": [
+          {
+            "name": "fullName",
+            "type": "text"
+          },
+          {
+            "name": "phone",
+            "type": "varchar",
+            "length": 40,
+            "nullable": true
+          },
+          {
+            "name": "status",
+            "type": "enum",
+            "values": [
+              "lead",
+              "active",
+              "archived"
+            ],
+            "default": "lead"
+          },
+          {
+            "name": "score",
+            "type": "text",
+            "nullable": true
+          }
+        ]
+      }
+    ],
+    "relationships": [
+      {
+        "from": "Contact",
+        "to": "Company",
+        "type": "ManyToOne",
+        "index": true
+      }
+    ]
+  }
+}
+```
+
+Get this ready to deploy. Write `.apsorc` and the answered `.apso/migration-plan.json` into the project so I can run `apso migrate` again, and tell me what happens to the existing rows.

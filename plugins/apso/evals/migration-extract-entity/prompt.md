@@ -149,31 +149,109 @@ I changed `.apsorc` to this:
 }
 ```
 
-Then I ran `apso migrate generate --baseline deployed.apsorc`, which wrote `src/migrations/1793104750704-SchemaUpdate-migration.ts`:
+Then I ran `apso migrate`. It saved `.apso/migration-plan.json` and printed:
 
-```ts
-import { MigrationInterface, QueryRunner } from "typeorm";
-
-export class SchemaUpdateMigration1793104750704 implements MigrationInterface {
-    name = 'SchemaUpdateMigration1793104750704'
-
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`CREATE TYPE "public"."phone_number_label_enum" AS ENUM('mobile', 'work', 'home')`);
-        await queryRunner.query(`CREATE TABLE "phone_number" ("id" SERIAL NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "number" character varying(40) NOT NULL, "label" "public"."phone_number_label_enum" NOT NULL DEFAULT 'mobile', "contactId" integer NOT NULL, CONSTRAINT "PK_c16f58426537a660b3f2a26e983" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE INDEX "IDX_069067410ee19d423487a189e4" ON "phone_number" ("contactId") `);
-        await queryRunner.query(`ALTER TABLE "contact" DROP COLUMN "phone"`);
-        await queryRunner.query(`ALTER TABLE "phone_number" ADD CONSTRAINT "FK_069067410ee19d423487a189e4d" FOREIGN KEY ("contactId") REFERENCES "contact"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+```json
+{
+  "status": "questions",
+  "plan": ".apso/migration-plan.json",
+  "baseline": "deployed.apsorc",
+  "open": [
+    {
+      "id": "field:Contact.phone",
+      "kind": "removedField",
+      "subject": "Field Contact.phone (varchar) is gone",
+      "options": [
+        "move:PhoneNumber.number",
+        "drop"
+      ],
+      "labels": {
+        "move:PhoneNumber.number": "Moved to PhoneNumber.number (copies the existing values)",
+        "drop": "Dropped (deletes its data)"
+      }
     }
-
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE "phone_number" DROP CONSTRAINT "FK_069067410ee19d423487a189e4d"`);
-        await queryRunner.query(`ALTER TABLE "contact" ADD "phone" character varying(40)`);
-        await queryRunner.query(`DROP INDEX "public"."IDX_069067410ee19d423487a189e4"`);
-        await queryRunner.query(`DROP TABLE "phone_number"`);
-        await queryRunner.query(`DROP TYPE "public"."phone_number_label_enum"`);
-    }
-
+  ],
+  "next": "Rerun apso migrate --answer <id>=<option> for each. For \"sql\" and \"split:\" answers, also set the question's \"sql\" in the plan file: a string, or one expression per split field."
 }
 ```
 
-Get this ready to deploy. Write `.apsorc` and the final migration file into the project, then print both files.
+This is `.apso/migration-plan.json`:
+
+```json
+{
+  "version": 1,
+  "from": "sha256:420e1c3e50d1390f936be4978f4da8e3f87ba6eb834d94ce95be401f44e00d65",
+  "to": "sha256:3f295f8f4faf91b15959a60cf5d586e96c3e70a8fc59aa218765aed35fb8b80f",
+  "questions": [
+    {
+      "id": "field:Contact.phone",
+      "kind": "removedField",
+      "subject": "Field Contact.phone (varchar) is gone",
+      "options": [
+        "move:PhoneNumber.number",
+        "drop"
+      ]
+    }
+  ],
+  "before": {
+    "version": 2,
+    "rootFolder": "src",
+    "apiType": "Rest",
+    "entities": [
+      {
+        "name": "Company",
+        "created_at": true,
+        "updated_at": true,
+        "fields": [
+          {
+            "name": "name",
+            "type": "text"
+          }
+        ]
+      },
+      {
+        "name": "Contact",
+        "created_at": true,
+        "updated_at": true,
+        "fields": [
+          {
+            "name": "fullName",
+            "type": "text"
+          },
+          {
+            "name": "phone",
+            "type": "varchar",
+            "length": 40,
+            "nullable": true
+          },
+          {
+            "name": "status",
+            "type": "enum",
+            "values": [
+              "lead",
+              "active",
+              "archived"
+            ],
+            "default": "lead"
+          },
+          {
+            "name": "score",
+            "type": "text",
+            "nullable": true
+          }
+        ]
+      }
+    ],
+    "relationships": [
+      {
+        "from": "Contact",
+        "to": "Company",
+        "type": "ManyToOne",
+        "index": true
+      }
+    ]
+  }
+}
+```
+
+Get this ready to deploy. Write `.apsorc` and the answered `.apso/migration-plan.json` into the project so I can run `apso migrate` again, and tell me what happens to the existing rows.
