@@ -25,10 +25,9 @@ apso deploy --no-wait                  # Trigger without waiting for completion
 ### Schema Management
 
 ```bash
-apso migrate                  # Test migrations locally (PGlite sandbox)
-apso migrate --apply          # Apply and update snapshot
-apso migrate --reset          # Clear sandbox data
-apso migrate --sql            # Output raw SQL only
+apso migrate generate --baseline deployed.apsorc   # TypeORM migration from the deployed schema (TypeScript)
+apso migrate verify --baseline deployed.apsorc --migration <file> --seed seed.sql   # Run it on seeded rows, check data loss and drift
+apso migrate --sql            # Print the DDL for the current .apsorc
 apso schema validate          # Validate local .apsorc
 apso schema validate --local  # Skip server-side validation
 apso schema diff              # Diff local vs remote schema
@@ -191,17 +190,21 @@ The `scopeBy` property enables automatic multi-tenant data isolation. When set, 
 
 | Type | Description | Relevant Options |
 |------|-------------|-----------------|
-| `text` | String/varchar | `length` |
+| `text` | Unlimited-length string | |
+| `varchar` | String with a length limit (255 unless set) | `length` |
 | `integer` | Integer number | `default` |
 | `float` | Floating point number | `default` |
-| `decimal` | Fixed-precision decimal | `precision`, `scale` |
+| `decimal` | Fixed-precision decimal. Use for money. | `precision`, `scale` |
 | `numeric` | Numeric (alias for decimal) | `precision`, `scale` |
 | `boolean` | True/false | `default` |
-| `date` | Date (no time) | `default` |
+| `date` | Calendar date, no time of day | `default` |
+| `timestamptz` | Moment in time with time zone. Use for `*At` fields. | |
+| `timestamp` | Date and time without time zone | |
+| `uuid` | UUID value (not for the primary key; use `primaryKeyType`) | |
 | `enum` | Enumerated values | `values` (required) |
-| `json` | JSON column (TypeORM simple-json) | |
-| `json-plain` | JSON column (raw jsonb) | |
-| `array` | Array column | |
+| `json` | JSON column, stored as Postgres `jsonb` | |
+| `json-plain` | JSON column, stored as Postgres `json` | |
+| `array` | Postgres array (`text[]` unless `elementType` is set) | `elementType` |
 
 ---
 
@@ -257,7 +260,7 @@ Relationships are defined in a separate top-level `relationships` array.
 | `type` | `RelationshipType` | _(required)_ | See relationship types below. |
 | `to_name` | `string` | _(auto)_ | Property name on the source entity for the target. Used when multiple relationships exist to the same entity. |
 | `nullable` | `boolean` | `false` | Whether the FK column allows NULL. |
-| `bi_directional` | `boolean` | `false` | Whether to generate inverse navigation. |
+| `bi_directional` | `boolean` | `true` for OneToMany/ManyToOne, `false` otherwise | Whether to generate inverse navigation. Self-references are always one-directional. |
 | `cascadeDelete` | `boolean` | `false` | CASCADE on delete. |
 | `index` | `boolean` | `false` | Index the FK column. |
 | `joinTableName` | `string` | _(auto)_ | Custom join table name for ManyToMany. |
@@ -275,12 +278,13 @@ Relationships are defined in a separate top-level `relationships` array.
 
 ### Relationship Patterns
 
+**Declare each relationship once.** A `ManyToOne` and a `OneToMany` each generate the foreign key and the inverse property, so declaring `Project ManyToOne Organization` and also `Organization OneToMany Project` is redundant. When the two name the collection differently (a `to_name` on the `OneToMany`), Organization gets two collections for the same foreign key, and `apso schema validate` does not catch it. Declare the `ManyToOne` from the child, since it carries `nullable`, `index` and `cascadeDelete`.
+
 **One-to-Many / Many-to-One (most common):**
 ```json
 {
   "relationships": [
-    { "from": "Organization", "to": "Project", "type": "OneToMany" },
-    { "from": "Project", "to": "Organization", "type": "ManyToOne" }
+    {"from": "Project", "to": "Organization", "type": "ManyToOne", "index": true}
   ]
 }
 ```
@@ -289,8 +293,8 @@ Relationships are defined in a separate top-level `relationships` array.
 ```json
 {
   "relationships": [
-    { "from": "Service", "to": "Stack", "type": "ManyToOne", "to_name": "networkStack", "nullable": true },
-    { "from": "Service", "to": "Stack", "type": "ManyToOne", "to_name": "databaseStack", "nullable": true }
+    {"from": "Service", "to": "Stack", "type": "ManyToOne", "to_name": "networkStack", "nullable": true, "index": true},
+    {"from": "Service", "to": "Stack", "type": "ManyToOne", "to_name": "databaseStack", "nullable": true, "index": true}
   ]
 }
 ```
@@ -308,7 +312,7 @@ Relationships are defined in a separate top-level `relationships` array.
 ```json
 {
   "relationships": [
-    { "from": "Category", "to": "Category", "type": "ManyToOne", "to_name": "parent", "nullable": true }
+    {"from": "Category", "to": "Category", "type": "ManyToOne", "to_name": "parent", "nullable": true, "index": true}
   ]
 }
 ```
@@ -469,13 +473,10 @@ A task management API with organizations, projects, and tasks:
     }
   ],
   "relationships": [
-    { "from": "Organization", "to": "User", "type": "OneToMany" },
-    { "from": "User", "to": "Organization", "type": "ManyToOne" },
-    { "from": "Organization", "to": "Project", "type": "OneToMany", "index": true },
-    { "from": "Project", "to": "Organization", "type": "ManyToOne" },
-    { "from": "Project", "to": "Task", "type": "OneToMany" },
-    { "from": "Task", "to": "Project", "type": "ManyToOne" },
-    { "from": "Task", "to": "User", "type": "ManyToOne", "to_name": "assignee", "nullable": true }
+    {"from": "User", "to": "Organization", "type": "ManyToOne", "index": true},
+    {"from": "Project", "to": "Organization", "type": "ManyToOne", "index": true},
+    {"from": "Task", "to": "Project", "type": "ManyToOne", "index": true},
+    {"from": "Task", "to": "User", "type": "ManyToOne", "to_name": "assignee", "nullable": true, "index": true}
   ]
 }
 ```
@@ -505,7 +506,6 @@ cd my-api
 # Edit .apsorc with your schema
 apso generate
 apso dev                    # Local development
-apso migrate --apply        # Test migrations locally
 apso deploy                 # Deploy to AWS (RDS + Lambda + API Gateway)
 apso status                 # Check deployment status
 apso open                   # Open dashboard in browser
@@ -516,10 +516,13 @@ apso open                   # Open dashboard in browser
 ```bash
 # Edit .apsorc (add entities, fields, relationships)
 apso generate               # Regenerate code
-apso migrate                # Preview migration SQL
-apso migrate --apply        # Apply snapshot
-apso deploy                 # Deploy changes
+apso migrate generate --baseline deployed.apsorc   # TypeORM writes src/migrations/<ts>-SchemaUpdate-migration.ts
+# Review and patch it, then verify on seeded rows (schema-migration skill)
+apso migrate verify --baseline deployed.apsorc --migration src/migrations/<file> --seed seed.sql
+apso deploy                 # Runs the committed migrations, then deploys
 ```
+
+Once a service is deployed, the deploy only changes the database through committed migration files. TypeORM generates them, but its output drops data on type changes, fails on removed enum values, and builds a renamed entity as an empty table. See the `schema-migration` skill.
 
 ---
 

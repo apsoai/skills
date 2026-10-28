@@ -114,14 +114,14 @@ This associates your local project with a service on the Apso platform.
 ### Step 3: Test Migrations Locally
 
 ```bash
-# Preview migration SQL in a PGlite sandbox
-apso migrate
+# Generate the migration with TypeORM, from the deployed schema to the new entities
+apso migrate generate --baseline deployed.apsorc
 
-# If the SQL looks correct, apply the snapshot
-apso migrate --apply
+# Run it on a local copy of the deployed schema with seeded rows, then check for drift
+apso migrate verify --baseline deployed.apsorc --migration src/migrations/<file> --seed seed.sql
 ```
 
-The migrate command runs your schema changes against a local PGlite database to catch errors before deploying to production.
+**Once the service holds data, the deploy only changes the database through committed migration files** (`src/migrations/*-migration.ts` for TypeScript). Without one, the deploy succeeds and leaves the old tables in place. TypeORM's generated file drops data on type changes, fails on removed enum values, and builds a renamed entity as an empty table. Use the `schema-migration` skill for any schema change to a deployed service.
 
 ### Step 4: Deploy
 
@@ -212,14 +212,15 @@ When you change your schema after the initial deploy:
 # Regenerate code
 apso generate
 
-# Test migration locally
-apso migrate
+# Generate and verify the migration (schema-migration skill)
+apso migrate generate --baseline deployed.apsorc
+apso migrate verify --baseline deployed.apsorc --migration src/migrations/<file> --seed seed.sql
 
 # Deploy changes
 apso deploy
 ```
 
-The deploy command detects schema changes and runs migrations against the production database during deployment.
+On the first deploy the database is created from the schema. After that, the deploy runs the migration files committed in the project and nothing else, so write one for every schema change (see the `schema-migration` skill). The database changes before the new code goes live, so a rename or drop briefly breaks the running API unless it is split into expand and contract deploys.
 
 ## Environments
 

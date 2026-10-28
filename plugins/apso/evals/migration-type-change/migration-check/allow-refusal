@@ -1,0 +1,2 @@
+A migration that stops with RAISE EXCEPTION on values it cannot convert passes:
+no data is lost, and the deploy fails with that message.

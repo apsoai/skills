@@ -36,7 +36,7 @@ cd my-api
 
 Create or edit `.apsorc` in the project root. Use the `schema-designer` skill to generate this from requirements, or write it manually.
 
-See `references/apso-schema-guide.md` for the complete format reference.
+See `${CLAUDE_PLUGIN_ROOT}/references/apso-schema-guide.md` for the complete format reference.
 
 ### Step 3: Generate Code
 
@@ -136,12 +136,11 @@ When you modify `.apsorc`:
 # Regenerate code
 apso generate
 
-# Test migrations locally (PGlite sandbox)
-apso migrate
-
-# Apply migration snapshot
-apso migrate --apply
+# After the first deploy: generate the migration with TypeORM from the deployed schema
+apso migrate generate --baseline deployed.apsorc
 ```
+
+After the first deploy, every schema change also needs a committed migration file, or the deploy leaves the database unchanged. TypeORM's generated file can lose data on renames, type changes and enum changes; use the `schema-migration` skill to review and verify it.
 
 ## Deployment
 

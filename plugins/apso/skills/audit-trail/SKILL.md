@@ -42,8 +42,8 @@ Track which user made changes. Add `createdBy` and `updatedBy` relationships to 
     }
   ],
   "relationships": [
-    { "from": "Project", "to": "User", "type": "ManyToOne", "to_name": "createdBy" },
-    { "from": "Project", "to": "User", "type": "ManyToOne", "to_name": "updatedBy", "nullable": true }
+    {"from": "Project", "to": "User", "type": "ManyToOne", "to_name": "createdBy", "index": true},
+    {"from": "Project", "to": "User", "type": "ManyToOne", "to_name": "updatedBy", "nullable": true, "index": true}
   ]
 }
 ```
@@ -81,9 +81,8 @@ A dedicated entity that records every significant action in the system.
     }
   ],
   "relationships": [
-    { "from": "ActivityLog", "to": "User", "type": "ManyToOne", "to_name": "actor" },
-    { "from": "Organization", "to": "ActivityLog", "type": "OneToMany" },
-    { "from": "ActivityLog", "to": "Organization", "type": "ManyToOne" }
+    {"from": "ActivityLog", "to": "User", "type": "ManyToOne", "to_name": "actor", "index": true},
+    {"from": "ActivityLog", "to": "Organization", "type": "ManyToOne", "index": true}
   ]
 }
 ```
@@ -125,9 +124,8 @@ Track exact field-level changes for critical entities.
     }
   ],
   "relationships": [
-    { "from": "ChangeRecord", "to": "User", "type": "ManyToOne", "to_name": "changedBy" },
-    { "from": "Organization", "to": "ChangeRecord", "type": "OneToMany" },
-    { "from": "ChangeRecord", "to": "Organization", "type": "ManyToOne" }
+    {"from": "ChangeRecord", "to": "User", "type": "ManyToOne", "to_name": "changedBy", "index": true},
+    {"from": "ChangeRecord", "to": "Organization", "type": "ManyToOne", "index": true}
   ]
 }
 ```

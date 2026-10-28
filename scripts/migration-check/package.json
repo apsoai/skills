@@ -1,0 +1,10 @@
+{
+  "name": "apso-migration-check",
+  "private": true,
+  "type": "module",
+  "description": "Runs an eval's TypeORM migrations against seeded PGlite. Used by scripts/pre-commit-evals.sh.",
+  "dependencies": {
+    "@electric-sql/pglite": "^0.2.17",
+    "typescript": "^5.6.3"
+  }
+}

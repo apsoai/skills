@@ -48,7 +48,8 @@ jobs:
           base_ver=$(git show "origin/$BASE:$PLUGIN_MANIFEST" | jq -r '.version')
 
           # 3. If anything under the published plugin changed, the version must move.
-          changed=$(git diff --name-only "origin/$BASE...HEAD" -- plugins/apso/ || true)
+          # evals/ is the test suite, not shipped behavior, so it doesn't need a bump.
+          changed=$(git diff --name-only "origin/$BASE...HEAD" -- plugins/apso/ ':(exclude)plugins/apso/evals/' || true)
           if [ -n "$changed" ]; then
             echo "Published plugin files changed in this PR:"
             echo "$changed" | sed 's/^/  /'

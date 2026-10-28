@@ -103,12 +103,9 @@ Users can belong to multiple workspaces. Data is isolated per workspace, not per
     }
   ],
   "relationships": [
-    { "from": "Workspace", "to": "WorkspaceMember", "type": "OneToMany" },
-    { "from": "WorkspaceMember", "to": "Workspace", "type": "ManyToOne" },
-    { "from": "User", "to": "WorkspaceMember", "type": "OneToMany" },
-    { "from": "WorkspaceMember", "to": "User", "type": "ManyToOne" },
-    { "from": "Workspace", "to": "Document", "type": "OneToMany" },
-    { "from": "Document", "to": "Workspace", "type": "ManyToOne" }
+    {"from": "WorkspaceMember", "to": "Workspace", "type": "ManyToOne", "index": true},
+    {"from": "WorkspaceMember", "to": "User", "type": "ManyToOne", "index": true},
+    {"from": "Document", "to": "Workspace", "type": "ManyToOne", "index": true}
   ]
 }
 ```

@@ -42,10 +42,10 @@ The standard SaaS billing schema that maps to Stripe's data model.
         { "name": "stripeSubscriptionId", "type": "text", "length": 255, "unique": true },
         { "name": "status", "type": "enum", "values": ["active", "past_due", "canceled", "trialing", "incomplete", "paused"], "default": "active" },
         { "name": "billingCycle", "type": "enum", "values": ["monthly", "yearly"], "default": "monthly" },
-        { "name": "currentPeriodStart", "type": "date" },
-        { "name": "currentPeriodEnd", "type": "date" },
+        { "name": "currentPeriodStart", "type": "timestamptz" },
+        { "name": "currentPeriodEnd", "type": "timestamptz" },
         { "name": "cancelAtPeriodEnd", "type": "boolean", "default": "false" },
-        { "name": "trialEndsAt", "type": "date", "nullable": true }
+        { "name": "trialEndsAt", "type": "timestamptz", "nullable": true }
       ],
       "indexes": [
         { "fields": ["stripeSubscriptionId"], "unique": true },
@@ -76,21 +76,18 @@ The standard SaaS billing schema that maps to Stripe's data model.
         { "name": "currency", "type": "text", "length": 3, "default": "usd" },
         { "name": "status", "type": "enum", "values": ["draft", "open", "paid", "void", "uncollectible"], "default": "draft" },
         { "name": "invoiceUrl", "type": "text", "nullable": true },
-        { "name": "paidAt", "type": "date", "nullable": true },
-        { "name": "periodStart", "type": "date" },
-        { "name": "periodEnd", "type": "date" }
+        { "name": "paidAt", "type": "timestamptz", "nullable": true },
+        { "name": "periodStart", "type": "timestamptz" },
+        { "name": "periodEnd", "type": "timestamptz" }
       ]
     }
   ],
   "relationships": [
-    { "from": "Organization", "to": "Subscription", "type": "OneToMany" },
-    { "from": "Subscription", "to": "Organization", "type": "ManyToOne" },
-    { "from": "Subscription", "to": "Plan", "type": "ManyToOne" },
-    { "from": "Organization", "to": "PaymentMethod", "type": "OneToMany" },
-    { "from": "PaymentMethod", "to": "Organization", "type": "ManyToOne" },
-    { "from": "Organization", "to": "Invoice", "type": "OneToMany" },
-    { "from": "Invoice", "to": "Organization", "type": "ManyToOne" },
-    { "from": "Invoice", "to": "Subscription", "type": "ManyToOne" }
+    {"from": "Subscription", "to": "Organization", "type": "ManyToOne", "index": true},
+    {"from": "Subscription", "to": "Plan", "type": "ManyToOne", "index": true},
+    {"from": "PaymentMethod", "to": "Organization", "type": "ManyToOne", "index": true},
+    {"from": "Invoice", "to": "Organization", "type": "ManyToOne", "index": true},
+    {"from": "Invoice", "to": "Subscription", "type": "ManyToOne", "index": true}
   ]
 }
 ```
@@ -119,8 +116,8 @@ Track metered usage for consumption-based pricing.
         { "name": "metric", "type": "text", "length": 50 },
         { "name": "quantity", "type": "decimal", "precision": 15, "scale": 4 },
         { "name": "unit", "type": "text", "length": 20 },
-        { "name": "periodStart", "type": "date" },
-        { "name": "periodEnd", "type": "date" },
+        { "name": "periodStart", "type": "timestamptz" },
+        { "name": "periodEnd", "type": "timestamptz" },
         { "name": "metadata", "type": "json-plain", "nullable": true }
       ],
       "indexes": [
@@ -137,7 +134,7 @@ Track metered usage for consumption-based pricing.
         { "name": "limitValue", "type": "decimal", "precision": 15, "scale": 4 },
         { "name": "currentUsage", "type": "decimal", "precision": 15, "scale": 4, "default": "0" },
         { "name": "resetCycle", "type": "enum", "values": ["daily", "weekly", "monthly", "yearly"], "default": "monthly" },
-        { "name": "lastResetAt", "type": "date" }
+        { "name": "lastResetAt", "type": "timestamptz" }
       ],
       "indexes": [
         { "fields": ["organizationId", "metric"], "unique": true }
@@ -145,10 +142,8 @@ Track metered usage for consumption-based pricing.
     }
   ],
   "relationships": [
-    { "from": "Organization", "to": "UsageRecord", "type": "OneToMany" },
-    { "from": "UsageRecord", "to": "Organization", "type": "ManyToOne" },
-    { "from": "Organization", "to": "UsageLimit", "type": "OneToMany" },
-    { "from": "UsageLimit", "to": "Organization", "type": "ManyToOne" }
+    {"from": "UsageRecord", "to": "Organization", "type": "ManyToOne", "index": true},
+    {"from": "UsageLimit", "to": "Organization", "type": "ManyToOne", "index": true}
   ]
 }
 ```

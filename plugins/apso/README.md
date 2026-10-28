@@ -27,6 +27,7 @@ claude mcp add apso -- npx @apso/cli mcp serve
 |-------|-------------|
 | **schema-designer** | Design a database schema from application requirements |
 | **schema-review** | Audit an existing schema for normalization, indexing, and scale |
+| **schema-migration** | Change the schema of a deployed service without losing data: the `.apsorc` edit plus the migration file that moves existing rows |
 | **multi-tenancy** | Add tenant data isolation (organization-scoped queries) |
 | **auth-entities** | Authentication entities (users, sessions, roles, permissions) |
 | **audit-trail** | Track who changed what and when |

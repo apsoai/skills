@@ -30,8 +30,7 @@ Free-form tags that can be applied to any entity. Users create tags on the fly.
     }
   ],
   "relationships": [
-    { "from": "Organization", "to": "Tag", "type": "OneToMany" },
-    { "from": "Tag", "to": "Organization", "type": "ManyToOne" },
+    {"from": "Tag", "to": "Organization", "type": "ManyToOne", "index": true},
     { "from": "Project", "to": "Tag", "type": "ManyToMany", "bi_directional": true },
     { "from": "Task", "to": "Tag", "type": "ManyToMany", "bi_directional": true }
   ]
@@ -65,10 +64,8 @@ Each record belongs to exactly one category. Categories are predefined.
     }
   ],
   "relationships": [
-    { "from": "Organization", "to": "Category", "type": "OneToMany" },
-    { "from": "Category", "to": "Organization", "type": "ManyToOne" },
-    { "from": "Product", "to": "Category", "type": "ManyToOne" },
-    { "from": "Category", "to": "Product", "type": "OneToMany" }
+    {"from": "Category", "to": "Organization", "type": "ManyToOne", "index": true},
+    {"from": "Product", "to": "Category", "type": "ManyToOne", "index": true}
   ]
 }
 ```
@@ -101,10 +98,8 @@ Categories with parent-child nesting. Combines the `hierarchical-data` pattern w
     }
   ],
   "relationships": [
-    { "from": "Category", "to": "Category", "type": "ManyToOne", "to_name": "parent", "nullable": true },
-    { "from": "Category", "to": "Category", "type": "OneToMany", "to_name": "children" },
-    { "from": "Organization", "to": "Category", "type": "OneToMany" },
-    { "from": "Category", "to": "Organization", "type": "ManyToOne" }
+    {"from": "Category", "to": "Category", "type": "ManyToOne", "to_name": "parent", "nullable": true, "index": true},
+    {"from": "Category", "to": "Organization", "type": "ManyToOne", "index": true}
   ]
 }
 ```
@@ -142,25 +137,12 @@ Multiple independent classification dimensions. Each entity can be classified al
       "indexes": [
         { "fields": ["facetId", "slug"], "unique": true }
       ]
-    },
-    {
-      "name": "EntityFacetValue",
-      "fields": [
-        { "name": "entityType", "type": "text", "length": 50 },
-        { "name": "entityId", "type": "text", "length": 50 }
-      ],
-      "indexes": [
-        { "fields": ["entityType", "entityId", "facetValueId"], "unique": true }
-      ]
     }
   ],
   "relationships": [
-    { "from": "Facet", "to": "FacetValue", "type": "OneToMany" },
-    { "from": "FacetValue", "to": "Facet", "type": "ManyToOne" },
-    { "from": "FacetValue", "to": "EntityFacetValue", "type": "OneToMany" },
-    { "from": "EntityFacetValue", "to": "FacetValue", "type": "ManyToOne" },
-    { "from": "Organization", "to": "Facet", "type": "OneToMany" },
-    { "from": "Facet", "to": "Organization", "type": "ManyToOne" }
+    {"from": "FacetValue", "to": "Facet", "type": "ManyToOne", "index": true},
+    { "from": "Product", "to": "FacetValue", "type": "ManyToMany", "bi_directional": true },
+    {"from": "Facet", "to": "Organization", "type": "ManyToOne", "index": true}
   ]
 }
 ```
@@ -169,6 +151,10 @@ Example facets for a product catalog:
 - **Color:** Red, Blue, Green
 - **Size:** Small, Medium, Large
 - **Material:** Cotton, Polyester, Silk
+
+Each classified entity type gets its own `ManyToMany` to `FacetValue` (add `Listing` or `Job` the same way). Do not use one shared table with `entityType` and `entityId` columns: Postgres cannot put a foreign key on that pair, so deleted products leave orphaned rows and a bad id is accepted silently.
+
+`allowMultiple: false` (one Size per product) cannot be expressed in `.apsorc`. Enforce it in the create handler.
 
 **When to use:** E-commerce filters, job board search, property listings. Anywhere users need to filter by multiple independent dimensions.
 

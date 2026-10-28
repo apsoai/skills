@@ -1,0 +1,1 @@
+Design the data model for a B2B CRM. Sales reps belong to an organization. Track companies and their contacts, deals moving through pipeline stages, activities (calls, emails, meetings) logged against contacts and deals, and tags on contacts. Write the result to `.apsorc` in the current directory, then print the final file contents.

@@ -8,7 +8,7 @@ description: Review an existing schema for normalization, indexing, scalability,
 
 Audit an existing `.apsorc` schema against database-engineering best practices and return concrete, prioritized fixes. Where `schema-designer` *produces* a schema, this skill *hardens* one — it's the database-architect pass.
 
-Applies `references/data-modeling-principles.md` (the design rigor) and `references/apso-schema-guide.md` (the correct format).
+Applies `${CLAUDE_PLUGIN_ROOT}/references/data-modeling-principles.md` (the design rigor), `${CLAUDE_PLUGIN_ROOT}/references/relational-patterns.md` (pattern encodings and the anti-pattern table) and `${CLAUDE_PLUGIN_ROOT}/references/apso-schema-guide.md` (the correct format).
 
 ## When To Use
 
@@ -34,12 +34,14 @@ Applies `references/data-modeling-principles.md` (the design rigor) and `referen
 - Status fields are enums with valid defaults (no `default: null`)
 - Unique constraints on natural keys (email, slug)
 - Tenant-scoped entities use `scopeBy` (except tenant root / lookups / auth)
-- Field types and syntax valid per the schema guide (`text` not `string`/`varchar`; no `*_id` fields; `date` not `timestamp`; `primaryKeyType: uuid` not a `uuid` field)
+- Field types and syntax valid per the schema guide (no `*_id` fields; `primaryKeyType: uuid` instead of a `uuid` id field). `string` (an alias of `varchar`), `varchar`, `timestamptz`, `timestamp` and `uuid` are all valid types. Do not flag them.
+- Moments in time (`placedAt`, `paidAt`, `expiresAt`) are `timestamptz`, not `date`, which drops the time of day
+- Long free text (descriptions, notes, bodies) is `text`, not `varchar`, which truncates at 255 characters by default
 
 ## How I Work
 
 1. Read the current `.apsorc` (or the described schema).
-2. Evaluate it against the checklist in `data-modeling-principles.md`.
+2. Evaluate it against the checklist in `data-modeling-principles.md` and the anti-pattern table at the end of `relational-patterns.md`. When a fix needs a guarantee `.apsorc` cannot express, say so and name where to enforce it.
 3. Produce **findings**, each with: severity (blocker / recommended / optional), the issue, why it matters, and the **exact `.apsorc` change** to apply.
 4. Offer to apply the accepted fixes.
 
@@ -64,5 +66,5 @@ OPTIONAL — Project.name has no unique constraint within an org
 ## Related
 
 - `schema-designer` — produce a schema from requirements (this skill hardens the result)
-- `references/data-modeling-principles.md` — the design rigor this skill applies
+- `${CLAUDE_PLUGIN_ROOT}/references/data-modeling-principles.md` — the design rigor this skill applies
 - `multi-tenancy`, `audit-trail`, `soft-delete` — patterns a review commonly recommends

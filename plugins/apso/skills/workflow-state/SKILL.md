@@ -49,7 +49,7 @@ Track every status change as a separate record.
         { "name": "name", "type": "text", "length": 200 },
         { "name": "value", "type": "decimal", "precision": 12, "scale": 2 },
         { "name": "stage", "type": "enum", "values": ["lead", "qualified", "proposal", "negotiation", "closed_won", "closed_lost"], "default": "lead" },
-        { "name": "stageEnteredAt", "type": "date" }
+        { "name": "stageEnteredAt", "type": "timestamptz" }
       ],
       "indexes": [
         { "fields": ["organizationId", "stage"] }
@@ -71,9 +71,8 @@ Track every status change as a separate record.
     }
   ],
   "relationships": [
-    { "from": "Deal", "to": "DealStageChange", "type": "OneToMany" },
-    { "from": "DealStageChange", "to": "Deal", "type": "ManyToOne" },
-    { "from": "DealStageChange", "to": "User", "type": "ManyToOne", "to_name": "changedBy" }
+    {"from": "DealStageChange", "to": "Deal", "type": "ManyToOne", "index": true},
+    {"from": "DealStageChange", "to": "User", "type": "ManyToOne", "to_name": "changedBy", "index": true}
   ]
 }
 ```
@@ -114,11 +113,9 @@ Let organizations define their own stages instead of using a fixed enum.
     }
   ],
   "relationships": [
-    { "from": "Organization", "to": "Pipeline", "type": "OneToMany" },
-    { "from": "Pipeline", "to": "Organization", "type": "ManyToOne" },
-    { "from": "Pipeline", "to": "PipelineStage", "type": "OneToMany" },
-    { "from": "PipelineStage", "to": "Pipeline", "type": "ManyToOne" },
-    { "from": "Deal", "to": "PipelineStage", "type": "ManyToOne", "to_name": "currentStage" }
+    {"from": "Pipeline", "to": "Organization", "type": "ManyToOne", "index": true},
+    {"from": "PipelineStage", "to": "Pipeline", "type": "ManyToOne", "index": true},
+    {"from": "Deal", "to": "PipelineStage", "type": "ManyToOne", "to_name": "currentStage", "index": true}
   ]
 }
 ```
@@ -153,7 +150,7 @@ Multi-step approvals with sequential or parallel reviewers.
         { "name": "stepNumber", "type": "integer" },
         { "name": "status", "type": "enum", "values": ["pending", "approved", "rejected", "skipped"], "default": "pending" },
         { "name": "decision", "type": "text", "nullable": true },
-        { "name": "decidedAt", "type": "date", "nullable": true }
+        { "name": "decidedAt", "type": "timestamptz", "nullable": true }
       ],
       "indexes": [
         { "fields": ["approvalRequestId", "stepNumber"] }
@@ -161,10 +158,9 @@ Multi-step approvals with sequential or parallel reviewers.
     }
   ],
   "relationships": [
-    { "from": "ApprovalRequest", "to": "ApprovalStep", "type": "OneToMany" },
-    { "from": "ApprovalStep", "to": "ApprovalRequest", "type": "ManyToOne" },
-    { "from": "ApprovalRequest", "to": "User", "type": "ManyToOne", "to_name": "requester" },
-    { "from": "ApprovalStep", "to": "User", "type": "ManyToOne", "to_name": "approver" }
+    {"from": "ApprovalStep", "to": "ApprovalRequest", "type": "ManyToOne", "index": true},
+    {"from": "ApprovalRequest", "to": "User", "type": "ManyToOne", "to_name": "requester", "index": true},
+    {"from": "ApprovalStep", "to": "User", "type": "ManyToOne", "to_name": "approver", "index": true}
   ]
 }
 ```
