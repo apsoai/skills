@@ -180,7 +180,7 @@ For service-to-service or developer API access.
 }
 ```
 
-## Pattern 5: JWT Providers (Auth0, Clerk, Cognito)
+## Pattern 5: JWT Providers (Auth0, Clerk, Cognito, any JWKS issuer)
 
 When using an external identity provider, you don't store credentials locally. Configure JWT validation instead.
 
@@ -193,13 +193,19 @@ When using an external identity provider, you don't store credentials locally. C
       "audience": "https://api.yourapp.com"
     },
     "claims": {
-      "userId": "sub",
-      "email": "email",
-      "roles": "roles",
-      "organizationId": "org_id"
+      "workspaceId": "org_id",
+      "roles": "https://yourapp.com/roles"
     }
   }
 }
 ```
+
+The service verifies each token's signature against the issuer's JWKS (`issuer` + `/.well-known/jwks.json` unless `jwt.jwksUri` is set), plus issuer, expiry, and `audience` when set. Needs `@apso/cli` 0.45.0 or later; older versions generated no check for these providers. Works in TypeScript, Go, and Python.
+
+- `clerk`: no `audience` (Clerk tokens have no `aud`); defaults map `o.id` to `workspaceId` and `o.rol` to roles. Set `jwt.authorizedParties` to the frontend origins.
+- `cognito`: set `audience` to the app client ID (checked against `client_id` on access tokens); groups map to roles.
+- `jwt`: any other issuer with a JWKS (Supabase Auth, Firebase, Better Auth's JWT plugin with `"algorithms": ["EdDSA"]`, Okta, WorkOS). Set `jwksUri` from the provider's `/.well-known/openid-configuration`.
+- Claim names match an exact key first (`https://yourapp.com/roles`), then a dotted path (`o.id`, `app_metadata.org_id`).
+- `workspaceId` is the tenant that `scopeBy` filters on. `scopeBy` is enforced in TypeScript only.
 
 The User entity still exists in your schema, but it syncs from the provider rather than storing credentials.

@@ -195,11 +195,14 @@ BetterAuth is the default. Other supported providers:
 
 | Provider | Config key | Use case |
 |----------|-----------|----------|
-| `better-auth` | `provider: "better-auth"` | Self-hosted, full control |
+| `better-auth` | `provider: "better-auth"` | Self-hosted, full control (TypeScript only) |
 | `auth0` | `provider: "auth0"` | Enterprise SSO, managed service |
 | `clerk` | `provider: "clerk"` | Drop-in UI components |
 | `cognito` | `provider: "cognito"` | AWS-native apps |
+| `jwt` | `provider: "jwt"` | Any issuer with a JWKS: Supabase Auth, Firebase, Okta, WorkOS, Better Auth's JWT plugin |
 | `api-key` | `provider: "api-key"` | Service-to-service auth |
-| `custom-db-session` | `provider: "custom-db-session"` | Custom session table |
+| `custom-db-session` | `provider: "custom-db-session"` | Custom session table (TypeScript only) |
+
+Token and API key checks need `@apso/cli` 0.45.0 or later and work in TypeScript, Go, and Python. For a Go or Python service with Better Auth, turn on Better Auth's JWT plugin and use `jwt`.
 
 See `auth-entities` skill for schema patterns for each provider.
