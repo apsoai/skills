@@ -8,6 +8,8 @@ description: Add file upload and attachment entities to a schema. S3 references,
 
 Model file uploads, attachments, and media references. Files are stored in S3 (or compatible). The database tracks metadata and a real foreign key to the record that owns each file.
 
+**Tenant scoping:** whenever you write `scopeBy`, follow `${CLAUDE_PLUGIN_ROOT}/references/tenant-scoping.md`, and run its checklist before you print the final `.apsorc`. The examples below assume each scoped entity also has a many-to-one relationship to `Organization`, which creates `organizationId`. Include it in the schema you write.
+
 ## Pattern 1: Files Owned by One Entity Type
 
 When files belong to one kind of record, give the file entity a real foreign key to it. This is the default.

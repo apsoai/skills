@@ -57,7 +57,11 @@ For each entity pair:
 
 Business entities get `scopeBy` pointing to the tenant identifier (usually `organizationId`). This generates guards that automatically filter queries, verify access, and inject scope values on create.
 
+Follow `${CLAUDE_PLUGIN_ROOT}/references/tenant-scoping.md`. Every entity that holds tenant data is scoped, including children such as comments, line items, and attachments. Each one has its own tenant column, through a many-to-one relationship to the tenant or a plain field. Never scope through a parent with a dot path such as `task.organizationId`.
+
 Exceptions: the Organization entity itself, global lookup tables, and auth entities.
+
+Run the checklist in `tenant-scoping.md` before you print the final `.apsorc`.
 
 ### Step 5: Add Indexes
 

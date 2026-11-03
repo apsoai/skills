@@ -8,6 +8,8 @@ description: Add audit logging and change tracking to a schema. Tracks who creat
 
 Track who did what and when. From simple timestamp fields to full change history with diffs.
 
+**Tenant scoping:** whenever you write `scopeBy`, follow `${CLAUDE_PLUGIN_ROOT}/references/tenant-scoping.md`, and run its checklist before you print the final `.apsorc`. The examples below assume each scoped entity also has a many-to-one relationship to `Organization`, which creates `organizationId`. Include it in the schema you write.
+
 ## Pattern 1: Timestamp Fields (Baseline)
 
 Every entity should have `created_at` and `updated_at`. These are built-in.

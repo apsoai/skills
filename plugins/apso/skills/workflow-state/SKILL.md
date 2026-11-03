@@ -8,6 +8,8 @@ description: Add state machine and workflow entities to a schema. Status transit
 
 Model status transitions, approval chains, and pipeline stages.
 
+**Tenant scoping:** whenever you write `scopeBy`, follow `${CLAUDE_PLUGIN_ROOT}/references/tenant-scoping.md`, and run its checklist before you print the final `.apsorc`. The examples below assume each scoped entity also has a many-to-one relationship to `Organization`, which creates `organizationId`. Include it in the schema you write.
+
 ## Pattern 1: Simple Status Enum
 
 The most common pattern. A single enum field tracks the current state.
@@ -98,6 +100,7 @@ Let organizations define their own stages instead of using a fixed enum.
     },
     {
       "name": "PipelineStage",
+      "scopeBy": "organizationId",
       "created_at": true,
       "updated_at": true,
       "fields": [
@@ -115,6 +118,7 @@ Let organizations define their own stages instead of using a fixed enum.
   "relationships": [
     {"from": "Pipeline", "to": "Organization", "type": "ManyToOne", "index": true},
     {"from": "PipelineStage", "to": "Pipeline", "type": "ManyToOne", "index": true},
+    {"from": "PipelineStage", "to": "Organization", "type": "ManyToOne", "index": true},
     {"from": "Deal", "to": "PipelineStage", "type": "ManyToOne", "to_name": "currentStage", "index": true}
   ]
 }
@@ -144,6 +148,7 @@ Multi-step approvals with sequential or parallel reviewers.
     },
     {
       "name": "ApprovalStep",
+      "scopeBy": "organizationId",
       "created_at": true,
       "updated_at": true,
       "fields": [
@@ -159,6 +164,7 @@ Multi-step approvals with sequential or parallel reviewers.
   ],
   "relationships": [
     {"from": "ApprovalStep", "to": "ApprovalRequest", "type": "ManyToOne", "index": true},
+    {"from": "ApprovalStep", "to": "Organization", "type": "ManyToOne", "index": true},
     {"from": "ApprovalRequest", "to": "User", "type": "ManyToOne", "to_name": "requester", "index": true},
     {"from": "ApprovalStep", "to": "User", "type": "ManyToOne", "to_name": "approver", "index": true}
   ]

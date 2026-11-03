@@ -206,6 +206,6 @@ The service verifies each token's signature against the issuer's JWKS (`issuer` 
 - `cognito`: set `audience` to the app client ID (checked against `client_id` on access tokens); groups map to roles.
 - `jwt`: any other issuer with a JWKS (Supabase Auth, Firebase, Better Auth's JWT plugin with `"algorithms": ["EdDSA"]`, Okta, WorkOS). Set `jwksUri` from the provider's `/.well-known/openid-configuration`.
 - Claim names match an exact key first (`https://yourapp.com/roles`), then a dotted path (`o.id`, `app_metadata.org_id`).
-- `workspaceId` is the tenant that `scopeBy` filters on. TypeScript, Go and Python (CLI 0.46.0+) enforce `scopeBy` on the entity's own fields; nested paths such as `task.workspaceId` are TypeScript only.
+- `workspaceId` is the tenant that `scopeBy` filters on. TypeScript, Go and Python (CLI 0.46.0+) enforce `scopeBy` on the entity's own fields. Don't use nested paths such as `task.workspaceId`: Python and Go ignore them, and TypeScript through 0.46.0 doesn't apply them to list requests. Give each tenant-owned entity its own tenant column; see `${CLAUDE_PLUGIN_ROOT}/references/tenant-scoping.md`.
 
 The User entity still exists in your schema, but it syncs from the provider rather than storing credentials.

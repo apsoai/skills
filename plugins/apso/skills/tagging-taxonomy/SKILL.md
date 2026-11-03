@@ -8,6 +8,8 @@ description: Add tags, categories, and taxonomy entities to a schema. Flat tags,
 
 Add flexible classification to your entities. From simple tags to hierarchical taxonomies.
 
+**Tenant scoping:** whenever you write `scopeBy`, follow `${CLAUDE_PLUGIN_ROOT}/references/tenant-scoping.md`, and run its checklist before you print the final `.apsorc`. The examples below assume each scoped entity also has a many-to-one relationship to `Organization`, which creates `organizationId`. Include it in the schema you write.
+
 ## Pattern 1: Flat Tags (Many-to-Many)
 
 Free-form tags that can be applied to any entity. Users create tags on the fly.
@@ -128,6 +130,7 @@ Multiple independent classification dimensions. Each entity can be classified al
     },
     {
       "name": "FacetValue",
+      "scopeBy": "organizationId",
       "created_at": true,
       "fields": [
         { "name": "value", "type": "text", "length": 100 },
@@ -141,6 +144,7 @@ Multiple independent classification dimensions. Each entity can be classified al
   ],
   "relationships": [
     {"from": "FacetValue", "to": "Facet", "type": "ManyToOne", "index": true},
+    {"from": "FacetValue", "to": "Organization", "type": "ManyToOne", "index": true},
     { "from": "Product", "to": "FacetValue", "type": "ManyToMany", "bi_directional": true },
     {"from": "Facet", "to": "Organization", "type": "ManyToOne", "index": true}
   ]
