@@ -8,6 +8,8 @@ description: Add soft delete patterns to a schema. Records are marked as deleted
 
 Mark records as deleted instead of removing them. Supports undo, data retention policies, and audit compliance.
 
+**Tenant scoping:** whenever you write `scopeBy`, follow `${CLAUDE_PLUGIN_ROOT}/references/tenant-scoping.md`, and run its checklist before you print the final `.apsorc`. The examples below assume each scoped entity also has a many-to-one relationship to `Organization`, which creates `organizationId`. Include it in the schema you write.
+
 ## Pattern 1: Deleted Timestamp
 
 Add a `deleted_at` field. Null means active, a date means deleted.

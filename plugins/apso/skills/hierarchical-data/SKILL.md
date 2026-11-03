@@ -8,6 +8,8 @@ description: Model tree structures and hierarchies in a schema. Covers parent-ch
 
 Model tree structures like categories, folders, org charts, nested comments, and threaded discussions.
 
+**Tenant scoping:** whenever you write `scopeBy`, follow `${CLAUDE_PLUGIN_ROOT}/references/tenant-scoping.md`, and run its checklist before you print the final `.apsorc`. The examples below assume each scoped entity also has a many-to-one relationship to `Organization`, which creates `organizationId`. Include it in the schema you write.
+
 ## Pattern 1: Adjacency List (Most Common)
 
 Each record points to its parent via a self-referencing relationship.

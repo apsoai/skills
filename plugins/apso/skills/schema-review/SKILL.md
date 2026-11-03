@@ -33,7 +33,11 @@ Applies `${CLAUDE_PLUGIN_ROOT}/references/data-modeling-principles.md` (the desi
 - `created_at` / `updated_at` on every entity
 - Status fields are enums with valid defaults (no `default: null`)
 - Unique constraints on natural keys (email, slug)
-- Tenant-scoped entities use `scopeBy` (except tenant root / lookups / auth)
+- Tenant-scoped entities use `scopeBy` (except tenant root / lookups / auth), following `${CLAUDE_PLUGIN_ROOT}/references/tenant-scoping.md`. In particular:
+  - BLOCKER: a child of tenant data (a comment, line item, attachment, or stage) with no `scopeBy`. Every tenant can read its rows.
+  - BLOCKER: a `scopeBy` with a dot path such as `task.organizationId`. Python and Go ignore it, and TypeScript through 0.46.0 doesn't filter lists with it. Fix: give the entity its own tenant column and scope by it.
+  - BLOCKER: a `scopeBy` column that the entity doesn't have, as a field or through a many-to-one relationship.
+  - RECOMMENDED: `bypassRoles` meant to give admins cross-tenant access. A TypeScript service with auth still filters direct scope fields for that role, so it won't work. Suggest a separate admin endpoint.
 - Field types and syntax valid per the schema guide (no `*_id` fields; `primaryKeyType: uuid` instead of a `uuid` id field). `string` (an alias of `varchar`), `varchar`, `timestamptz`, `timestamp` and `uuid` are all valid types. Do not flag them.
 - Moments in time (`placedAt`, `paidAt`, `expiresAt`) are `timestamptz`, not `date`, which drops the time of day
 - Long free text (descriptions, notes, bodies) is `text`, not `varchar`, which truncates at 255 characters by default

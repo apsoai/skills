@@ -141,10 +141,9 @@ The `scopeBy` property enables automatic multi-tenant data isolation. When set, 
 
 // Multiple scopes
 "scopeBy": ["organizationId", "projectId"]
-
-// Nested scope (joins to related entity)
-"scopeBy": "task.organizationId"
 ```
+
+Every value is a column on the entity itself. Don't write a nested path such as `task.organizationId`: give the child entity its own tenant column instead. For the full rules, see `tenant-scoping.md` in this directory.
 
 ### ScopeOptions
 
@@ -152,7 +151,7 @@ The `scopeBy` property enables automatic multi-tenant data isolation. When set, 
 |-----|------|---------|-------------|
 | `injectOnCreate` | `boolean` | `true` | Auto-inject scope value on POST requests. |
 | `enforceOn` | `ScopeOperation[]` | `["find","get","create","update","delete"]` | Which operations enforce scoping. |
-| `bypassRoles` | `string[]` | `[]` | Roles that skip scope enforcement. |
+| `bypassRoles` | `string[]` | `[]` | Roles that skip the scope guard. A TypeScript service with auth still filters direct scope fields for them, so don't use this for cross-tenant admin access. |
 
 ---
 
@@ -362,7 +361,7 @@ The service verifies each token's signature against the issuer's JWKS (`issuer` 
 - `cognito`: set `audience` to the app client ID (checked against `client_id` on access tokens); groups map to roles.
 - `jwt`: any other issuer with a JWKS (Supabase Auth, Firebase, Better Auth's JWT plugin with `"algorithms": ["EdDSA"]`, Okta, WorkOS). Set `jwksUri` from the provider's `/.well-known/openid-configuration`.
 - Claim names match an exact key first (`https://yourapp.com/roles`), then a dotted path (`o.id`, `app_metadata.org_id`).
-- `workspaceId` is the tenant that `scopeBy` filters on. TypeScript, Go and Python (CLI 0.46.0+) enforce `scopeBy` on the entity's own fields; nested paths such as `task.workspaceId` are TypeScript only.
+- `workspaceId` is the tenant that `scopeBy` filters on. TypeScript, Go and Python (CLI 0.46.0+) enforce `scopeBy` on the entity's own fields. Don't use nested paths such as `task.workspaceId`: Python and Go ignore them, and TypeScript through 0.46.0 doesn't apply them to list requests. Give each tenant-owned entity its own tenant column.
 
 ### API Key
 

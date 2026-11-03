@@ -8,6 +8,8 @@ description: Add billing and subscription entities to a schema. Stripe-compatibl
 
 Add Stripe-compatible billing entities. Covers plans, subscriptions, invoices, payment methods, and usage-based billing.
 
+**Tenant scoping:** whenever you write `scopeBy`, follow `${CLAUDE_PLUGIN_ROOT}/references/tenant-scoping.md`, and run its checklist before you print the final `.apsorc`. The examples below assume each scoped entity also has a many-to-one relationship to `Organization`, which creates `organizationId`. Include it in the schema you write.
+
 ## Pattern 1: Subscription Billing (Stripe)
 
 The standard SaaS billing schema that maps to Stripe's data model.
@@ -36,6 +38,7 @@ The standard SaaS billing schema that maps to Stripe's data model.
     },
     {
       "name": "Subscription",
+      "scopeBy": "organizationId",
       "created_at": true,
       "updated_at": true,
       "fields": [
@@ -54,6 +57,7 @@ The standard SaaS billing schema that maps to Stripe's data model.
     },
     {
       "name": "PaymentMethod",
+      "scopeBy": "organizationId",
       "created_at": true,
       "updated_at": true,
       "fields": [
@@ -68,6 +72,7 @@ The standard SaaS billing schema that maps to Stripe's data model.
     },
     {
       "name": "Invoice",
+      "scopeBy": "organizationId",
       "created_at": true,
       "fields": [
         { "name": "stripeInvoiceId", "type": "text", "length": 255, "unique": true },
@@ -111,6 +116,7 @@ Track metered usage for consumption-based pricing.
   "entities": [
     {
       "name": "UsageRecord",
+      "scopeBy": "organizationId",
       "created_at": true,
       "fields": [
         { "name": "metric", "type": "text", "length": 50 },
@@ -127,6 +133,7 @@ Track metered usage for consumption-based pricing.
     },
     {
       "name": "UsageLimit",
+      "scopeBy": "organizationId",
       "created_at": true,
       "updated_at": true,
       "fields": [

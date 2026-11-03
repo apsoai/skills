@@ -8,6 +8,8 @@ description: Add notification entities to a schema. In-app notifications, email 
 
 Add in-app notifications, delivery preferences, and notification history.
 
+**Tenant scoping:** whenever you write `scopeBy`, follow `${CLAUDE_PLUGIN_ROOT}/references/tenant-scoping.md`, and run its checklist before you print the final `.apsorc`. The examples below assume each scoped entity also has a many-to-one relationship to `Organization`, which creates `organizationId`. Include it in the schema you write.
+
 ## Pattern 1: Basic Notifications
 
 A notification entity with read/unread tracking and linking to the source action.
@@ -56,6 +58,7 @@ Let users control which notifications they receive and through which channels.
   "entities": [
     {
       "name": "NotificationPreference",
+      "scopeBy": "userId",
       "created_at": true,
       "updated_at": true,
       "fields": [
@@ -84,6 +87,7 @@ Track which notifications have been sent via email and batch them into digests.
   "entities": [
     {
       "name": "NotificationDelivery",
+      "scopeBy": "organizationId",
       "created_at": true,
       "fields": [
         { "name": "channel", "type": "enum", "values": ["in_app", "email", "push", "slack"] },
@@ -97,7 +101,8 @@ Track which notifications have been sent via email and batch them into digests.
     }
   ],
   "relationships": [
-    {"from": "NotificationDelivery", "to": "Notification", "type": "ManyToOne", "index": true}
+    {"from": "NotificationDelivery", "to": "Notification", "type": "ManyToOne", "index": true},
+    {"from": "NotificationDelivery", "to": "Organization", "type": "ManyToOne", "index": true}
   ]
 }
 ```

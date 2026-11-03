@@ -26,6 +26,8 @@ This generates:
 - Automatic injection on create (POST sets organizationId from auth context)
 - Access verification on update/delete (can't modify another tenant's data)
 
+**Before you write any `scopeBy`, read `${CLAUDE_PLUGIN_ROOT}/references/tenant-scoping.md` and follow every rule in it.** In short: scope every entity that holds tenant data, including children such as comments and line items; scope by a tenant column on the entity itself; never write a nested path such as `task.organizationId`. Run its checklist before you print the final `.apsorc`.
+
 ## Patterns
 
 ### Pattern 1: Organization-Scoped (Most Common)
@@ -129,23 +131,25 @@ Data is scoped by both organization and a sub-level (project, team, department).
 
 **When to use:** When you need two levels of isolation (e.g., org-level billing but project-level data access).
 
-### Pattern 4: Nested Scope
+### Pattern 4: Child Entities
 
-Scope through a related entity rather than a direct field.
+A child entity, such as a comment on a task, gets its own tenant column and scopes by it directly. Don't scope it through its parent.
 
 ```json
 {
-  "name": "Comment",
-  "scopeBy": "task.organizationId",
-  "fields": [
-    { "name": "body", "type": "text" }
+  "entities": [
+    { "name": "Comment", "scopeBy": "organizationId", "fields": [{ "name": "body", "type": "text" }] }
+  ],
+  "relationships": [
+    { "from": "Comment", "to": "Organization", "type": "ManyToOne", "index": true },
+    { "from": "Task", "to": "Comment", "type": "OneToMany" }
   ]
 }
 ```
 
-The guard joins to the `task` table to check `organizationId`. Useful when the entity doesn't store the tenant ID directly.
+The copied `organizationId` is intentional. A nested path such as `"scopeBy": "task.organizationId"` isn't enforced in Python or Go, and in TypeScript through `@apso/cli` 0.46.0 it doesn't filter list requests, so every tenant sees every comment.
 
-**When to use:** Deeply nested entities (comments on tasks, reactions on messages) where duplicating the tenant ID would be redundant.
+**When to use:** Comments on tasks, line items on orders, reactions on messages, attachments on documents.
 
 ## Scope Options
 
@@ -157,8 +161,7 @@ Fine-tune scope enforcement:
   "scopeBy": "organizationId",
   "scopeOptions": {
     "injectOnCreate": true,
-    "enforceOn": ["find", "get"],
-    "bypassRoles": ["superadmin"]
+    "enforceOn": ["find", "get"]
   },
   "fields": [...]
 }
@@ -168,13 +171,13 @@ Fine-tune scope enforcement:
 |--------|---------|-------------|
 | `injectOnCreate` | `true` | Auto-set tenant ID on POST requests |
 | `enforceOn` | `["find","get","create","update","delete"]` | Which operations enforce scoping |
-| `bypassRoles` | `[]` | Roles that skip scope checks |
+| `bypassRoles` | `[]` | Roles that skip the scope guard. In a TypeScript service with auth, direct scope fields are still filtered for these roles. |
 
 ### Common Configurations
 
 **Read-only scope** (audit logs, analytics): enforce on `find` and `get` only.
 
-**Admin bypass**: let `superadmin` role access all tenants (for support dashboards).
+**Admin access across tenants**: don't use `bypassRoles` for this. A TypeScript service with auth still filters direct scope fields for every role. Build support views as a separate endpoint or service, and tell the user.
 
 **No auto-inject**: set `injectOnCreate: false` when the client must explicitly provide the tenant ID.
 
