@@ -17,7 +17,7 @@ Foreign key columns are named `<to_name or entity>Id` (for example `projectId`, 
 - Declare each relationship once, as a `ManyToOne` from the child. Apso generates the inverse collection. Do not add the matching `OneToMany` as well: a second declaration is redundant, and when the two name the collection differently (a `to_name` on the OneToMany), the parent gets two collections for the same foreign key.
 - A self-reference is one `ManyToOne` with a `to_name` and `nullable: true`. No `children` OneToMany.
 - Two relationships to the same entity need distinct `to_name` values (`author`, `assignee`).
-- Set `"index": true` on every `ManyToOne`. Apso does not index foreign keys on its own.
+- Set `"index": true` on every `ManyToOne`. Apso does not index foreign keys on its own. Skip it when an `indexes` or `uniques` entry already starts with that foreign key column, which covers it. Choose composite indexes from the queries; see `postgres-performance.md`.
 
 ## 1. Keys
 
@@ -139,5 +139,8 @@ Foreign key columns are named `<to_name or entity>Id` (for example `projectId`, 
 | Enum for editable values | Enum values that users would want to add | Lookup entity |
 | Counter instead of rows | `likeCount`, `viewCount` incremented in place | Rows, with the count computed or cached |
 | Plain unique on a soft-deleted entity | `unique` plus `deletedAt` | Check among live rows in handlers |
-| Unindexed foreign key | `ManyToOne` used in filters without `index: true` | Add `index: true` |
+| Unindexed foreign key | `ManyToOne` with no `index: true` and no `indexes`/`uniques` entry starting with its column | Add `index: true` |
+| Redundant index | An index whose columns lead another index or unique (`["projectId"]` next to `["projectId", "status"]`), or a FK `index: true` that a unique already starts with | Delete the shorter one |
+| Lone low-cardinality index | `index: true` on a boolean or few-valued status | Move it after a selective column in a composite, or drop it |
+| Nullable column in a composite unique | `uniques` including an optional relationship's column | Duplicates with `NULL` pass; make it required or check in the handler |
 | Password on User | Any `password` field outside BetterAuth's Account | Use the auth entities |

@@ -2,7 +2,9 @@
 # Runs the plugin evals for staged skill changes. Only fires when Claude Code
 # commits (CLAUDECODE=1); SKIP_EVALS=1 skips it.
 # Every .apsorc an eval run writes must also pass `apso schema validate --local`,
-# and migration cases must pass scripts/migration-check against seeded rows.
+# and cases with a check dir must pass scripts/pg-check: migration-check/ applies
+# the agent's migration to seeded rows, index-check/ checks its indexes serve the
+# case's queries, query-check/ runs its SQL files against adversarial rows.
 # A failing case gets one retry: the Haiku judge occasionally fails a correct
 # answer, and with ~30 cases at one run each, one such flake per full run is
 # likely. A real regression fails both times.
@@ -43,11 +45,13 @@ validate() {
       rm -rf "$d"
     fi
     # Migration cases: apply the agent's migration to seeded rows and check them.
-    if [ -d "$E/$c/migration-check" ]; then
-      if ! out=$(node scripts/migration-check/check.mjs "$E/$c/migration-check" "$k/sealed/home/cwd" 2>&1); then
-        printf -- '--- MIGRATION CHECK failed for %s:\n%s\n' "$c" "$out" >&2; echo "$c"
+    for kind in migration index query; do
+      [ -d "$E/$c/$kind-check" ] || continue
+      script=check.mjs; [ "$kind" = migration ] || script=$kind-check.mjs
+      if ! out=$(node "scripts/pg-check/$script" "$E/$c/$kind-check" "$k/sealed/home/cwd" 2>&1); then
+        printf -- '--- %s CHECK failed for %s:\n%s\n' "$kind" "$c" "$out" >&2; echo "$c"
       fi
-    fi
+    done
     chmod -R u+w "$k" 2>/dev/null; rm -rf "$k"
   done
 }
@@ -67,7 +71,7 @@ run_cases() {
   for c in "$@"; do scored_below "$tmp/$label-$c.json" "$c"; validate "$tmp/$label-$c.json"; done | sort -u
 }
 
-[ -d scripts/migration-check/node_modules ] || npm ci --silent --prefix scripts/migration-check >&2
+[ -d scripts/pg-check/node_modules ] || npm ci --silent --prefix scripts/pg-check >&2
 tmp=$(mktemp -d)
 
 # references/ is shared by every skill, so run the whole suite. Otherwise map
