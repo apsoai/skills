@@ -51,7 +51,7 @@ For each entity pair:
 - Declare each relationship once, as a `ManyToOne` from the child to the parent. Apso generates the inverse collection on the parent. Do not also declare the `OneToMany`: a second declaration is redundant, and when the two name the collection differently (a `to_name` on the OneToMany), the parent gets two collections for the same foreign key.
 - A self-reference (tree) is one `ManyToOne` with `to_name: "parent"` and `nullable: true`. Do not add a `children` OneToMany.
 - Use `to_name` when an entity has multiple relationships to the same target
-- Set `"index": true` on every `ManyToOne`. Apso does not index foreign keys on its own.
+- Set `"index": true` on every `ManyToOne`. Apso does not index foreign keys on its own. Skip it only when an `indexes` or `uniques` entry already starts with that foreign key column; a second index on the same leading column is a duplicate that every insert pays for.
 
 ### Step 4: Add Multi-Tenancy
 
@@ -65,7 +65,7 @@ Run the checklist in `tenant-scoping.md` before you print the final `.apsorc`.
 
 ### Step 5: Add Indexes
 
-Add composite indexes for common query patterns:
+Derive indexes from the queries the app will run, not from the columns. Read `${CLAUDE_PLUGIN_ROOT}/references/postgres-performance.md` first. For each list or lookup: equality columns first (count the `scopeBy` tenant filter as one), then the one range or ORDER BY column. A board that shows one project's tasks in one status by due date needs `["projectId", "status", "dueDate"]`. Don't index a boolean or a few-valued status on its own, don't repeat an index another index or unique already starts with, and don't add an index no query uses.
 
 ```json
 "indexes": [
@@ -76,7 +76,7 @@ Add composite indexes for common query patterns:
 
 ### Step 6: Validate
 
-If the Apso CLI is available, run `apso schema validate --local` in the project folder. Fix every error, and every `FOREIGN_KEY_NOT_INDEXED` warning. Other warnings can stay when there is a reason (for example `MISSING_TIMESTAMPS` on append-only rows).
+If the Apso CLI is available, run `apso schema validate --local` in the project folder. Fix every error, and every `FOREIGN_KEY_NOT_INDEXED` warning, except one on a foreign key that already leads a `uniques` entry (that unique index covers it; older linters don't count uniques). Other warnings can stay when there is a reason (for example `MISSING_TIMESTAMPS` on append-only rows).
 
 ## Schema Format Reference
 

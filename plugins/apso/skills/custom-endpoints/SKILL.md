@@ -1,7 +1,7 @@
 ---
 name: custom-endpoints
 category: api
-description: Add custom business logic endpoints beyond generated CRUD, or replace a generated endpoint with a hand-written one. Extension controllers, services, middleware, and interceptors. Triggers on "add custom endpoint", "business logic", "custom API route", "extend the API", "add webhook", "replace generated endpoint", "override CRUD", "custom controller", "Stripe-shaped API".
+description: Add custom business logic endpoints beyond generated CRUD, or replace a generated endpoint with a hand-written one, including report, dashboard and stats endpoints that run hand-written SQL. Extension controllers, services, middleware, and interceptors. Use before writing any SQL query for an Apso service. Triggers on "add custom endpoint", "business logic", "custom API route", "extend the API", "add webhook", "replace generated endpoint", "override CRUD", "custom controller", "Stripe-shaped API", "reporting endpoint", "write the SQL", "aggregate query", "dashboard stats".
 ---
 
 # Custom Endpoints
@@ -34,7 +34,7 @@ Add a non-CRUD action to an entity (archive, publish, assign, clone).
 
 ```typescript
 // src/extensions/Project/Project.controller.ts
-import { Controller, Post, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Param, Body, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 
 @ApiTags('projects')
@@ -44,17 +44,18 @@ export class ProjectExtensionController {
 
   @Post(':id/archive')
   @ApiOperation({ summary: 'Archive a project' })
-  async archive(@Param('id') id: string) {
-    return this.projectService.archive(id);
+  async archive(@Param('id') id: string, @Req() req) {
+    return this.projectService.archive(id, req.organizationId);
   }
 
   @Post(':id/clone')
-  @ApiOperation({ summary: 'Clone a project with all tasks' })
+  @ApiOperation({ summary: 'Copy a project (not its tasks)' })
   async clone(
     @Param('id') id: string,
     @Body() body: { name: string },
+    @Req() req,
   ) {
-    return this.projectService.clone(id, body.name);
+    return this.projectService.clone(id, body.name, req.organizationId);
   }
 }
 ```
@@ -73,18 +74,20 @@ export class ProjectExtensionService {
     private readonly projectRepo: Repository<Project>,
   ) {}
 
-  async archive(id: string) {
-    const project = await this.projectRepo.findOne({ where: { id } });
+  // Extension code bypasses the generated scopeBy filter. Put the caller's
+  // organizationId in every where clause, or any caller can read or change
+  // another tenant's row by guessing its id.
+  async archive(id: string, organizationId: string) {
+    const project = await this.projectRepo.findOne({ where: { id, organizationId } });
     if (!project) throw new NotFoundException();
     project.status = 'archived';
     return this.projectRepo.save(project);
   }
 
-  async clone(id: string, newName: string) {
-    const project = await this.projectRepo.findOne({
-      where: { id },
-      relations: ['tasks'],
-    });
+  async clone(id: string, newName: string, organizationId: string) {
+    // Don't load relations here: spreading a loaded `tasks` array into the copy
+    // and saving it would re-point the original tasks at the new project.
+    const project = await this.projectRepo.findOne({ where: { id, organizationId } });
     if (!project) throw new NotFoundException();
 
     const cloned = this.projectRepo.create({
@@ -101,18 +104,22 @@ export class ProjectExtensionService {
 
 ## Pattern 2: Aggregation Endpoint
 
-Return computed data (counts, stats, summaries).
+Return computed data (counts, stats, summaries). Compute several counts over one table in one query with `FILTER`, not one round trip each.
 
 ```typescript
 @Get('stats')
 @ApiOperation({ summary: 'Get project statistics' })
 async getStats(@Req() req) {
-  const orgId = req.organizationId;
-  return {
-    total: await this.projectRepo.count({ where: { organizationId: orgId } }),
-    active: await this.projectRepo.count({ where: { organizationId: orgId, status: 'active' } }),
-    archived: await this.projectRepo.count({ where: { organizationId: orgId, status: 'archived' } }),
-  };
+  const [row] = await this.projectRepo.query(
+    `SELECT count(*) AS total,
+            count(*) FILTER (WHERE status = 'active') AS active,
+            count(*) FILTER (WHERE status = 'archived') AS archived
+     FROM project
+     WHERE "organizationId" = $1`,
+    [req.organizationId],
+  );
+  // count() is a bigint, which the driver returns as a string.
+  return { total: Number(row.total), active: Number(row.active), archived: Number(row.archived) };
 }
 ```
 
@@ -123,14 +130,16 @@ Process multiple records in one request.
 ```typescript
 @Post('bulk/archive')
 @ApiOperation({ summary: 'Archive multiple projects' })
-async bulkArchive(@Body() body: { ids: string[] }) {
-  await this.projectRepo
+async bulkArchive(@Body() body: { ids: string[] }, @Req() req) {
+  const result = await this.projectRepo
     .createQueryBuilder()
     .update()
     .set({ status: 'archived' })
     .whereInIds(body.ids)
+    .andWhere('"organizationId" = :org', { org: req.organizationId })
     .execute();
-  return { archived: body.ids.length };
+  // Report what changed: ids from another tenant or already deleted are skipped.
+  return { archived: result.affected ?? 0 };
 }
 ```
 
@@ -162,8 +171,12 @@ Access child resources through the parent URL.
 ```typescript
 // GET /projects/:projectId/tasks
 @Get(':projectId/tasks')
-async getProjectTasks(@Param('projectId') projectId: string) {
-  return this.taskRepo.find({ where: { projectId } });
+async getProjectTasks(@Param('projectId') projectId: string, @Req() req) {
+  return this.taskRepo.find({
+    where: { projectId, organizationId: req.organizationId },
+    order: { created_at: 'DESC', id: 'DESC' },
+    take: 50,
+  });
 }
 
 // POST /projects/:projectId/tasks
@@ -171,10 +184,43 @@ async getProjectTasks(@Param('projectId') projectId: string) {
 async createProjectTask(
   @Param('projectId') projectId: string,
   @Body() body: CreateTaskDto,
+  @Req() req,
 ) {
-  return this.taskRepo.save({ ...body, projectId });
+  // The project must belong to the caller's tenant before a task can join it.
+  const project = await this.projectRepo.findOne({ where: { id: projectId, organizationId: req.organizationId } });
+  if (!project) throw new NotFoundException();
+  return this.taskRepo.save({ ...body, projectId, organizationId: req.organizationId });
 }
 ```
+
+## Pattern 6: Report Query (hand-written SQL)
+
+When a report joins or aggregates across tables, write one SQL query and run it with the repository's `query`. Read `${CLAUDE_PLUGIN_ROOT}/references/postgres-performance.md` first: its table of wrong-result mistakes (filters on a LEFT JOIN, `NOT IN` with NULLs, joining two child tables before summing, `BETWEEN` on timestamps) applies to every query you write here.
+
+```typescript
+// Every project with its open task count and logged hours, including
+// projects with neither.
+@Get('report')
+async report(@Req() req) {
+  return this.projectRepo.query(
+    `SELECT p.id, p.name,
+            (SELECT count(*) FROM task t
+              WHERE t."projectId" = p.id AND t.status <> 'done') AS "openTasks",
+            coalesce((SELECT sum(e.hours) FROM time_entry e
+              WHERE e."projectId" = p.id), 0) AS hours
+     FROM project p
+     WHERE p."organizationId" = $1
+     ORDER BY p.name, p.id`,
+    [req.organizationId],
+  );
+}
+```
+
+- Pass every value as a `$n` parameter; never build SQL with string interpolation.
+- Filter the root table by `req.organizationId`. Raw SQL skips the generated `scopeBy` filter.
+- Quote camelCase columns (`"projectId"`) and the `"user"` table. Tables are snake_case (`time_entry`).
+- Aggregate each child table in its own subquery. Joining `task` and `time_entry` to `project` in one `FROM` and summing multiplies the rows.
+- End every `ORDER BY` with a unique column so pages and ties are stable.
 
 ## Replacing a generated endpoint (not just adding)
 

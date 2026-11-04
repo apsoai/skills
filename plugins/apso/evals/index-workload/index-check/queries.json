@@ -1,0 +1,14 @@
+{
+  "queries": [
+    { "label": "project board: one status, by due date", "table": "task", "eq": ["projectId", "status"], "also": ["organizationId"], "order": "dueDate",
+      "sql": "SELECT * FROM task WHERE \"organizationId\" = '00000000-0000-0000-0000-000000000001' AND \"projectId\" = '00000000-0000-0000-0000-000000000002' AND status = 'todo' ORDER BY \"dueDate\" LIMIT 50" },
+    { "label": "my tasks, latest due first", "table": "task", "eq": ["assigneeId"], "also": ["organizationId"], "order": "dueDate",
+      "sql": "SELECT * FROM task WHERE \"organizationId\" = '00000000-0000-0000-0000-000000000001' AND \"assigneeId\" = '00000000-0000-0000-0000-000000000003' ORDER BY \"dueDate\" DESC LIMIT 20" },
+    { "label": "sign-in lookup by email", "table": "user", "eq": ["organizationId", "email"],
+      "sql": "SELECT * FROM \"user\" WHERE \"organizationId\" = '00000000-0000-0000-0000-000000000001' AND email = 'ana@example.com'" },
+    { "label": "activity feed: tasks created this week", "table": "task", "eq": ["organizationId"], "order": "created_at",
+      "sql": "SELECT * FROM task WHERE \"organizationId\" = '00000000-0000-0000-0000-000000000001' AND created_at >= now() - interval '7 days' ORDER BY created_at DESC LIMIT 50" },
+    { "label": "active projects by name", "table": "project", "eq": ["organizationId", "status"], "order": "name",
+      "sql": "SELECT * FROM project WHERE \"organizationId\" = '00000000-0000-0000-0000-000000000001' AND status = 'active' ORDER BY name LIMIT 100" }
+  ]
+}

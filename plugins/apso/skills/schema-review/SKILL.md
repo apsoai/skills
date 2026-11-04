@@ -8,7 +8,7 @@ description: Review an existing schema for normalization, indexing, scalability,
 
 Audit an existing `.apsorc` schema against database-engineering best practices and return concrete, prioritized fixes. Where `schema-designer` *produces* a schema, this skill *hardens* one — it's the database-architect pass.
 
-Applies `${CLAUDE_PLUGIN_ROOT}/references/data-modeling-principles.md` (the design rigor), `${CLAUDE_PLUGIN_ROOT}/references/relational-patterns.md` (pattern encodings and the anti-pattern table) and `${CLAUDE_PLUGIN_ROOT}/references/apso-schema-guide.md` (the correct format).
+Applies `${CLAUDE_PLUGIN_ROOT}/references/data-modeling-principles.md` (the design rigor), `${CLAUDE_PLUGIN_ROOT}/references/relational-patterns.md` (pattern encodings and the anti-pattern table) `${CLAUDE_PLUGIN_ROOT}/references/postgres-performance.md` (index choice, constraint and type traps) and `${CLAUDE_PLUGIN_ROOT}/references/apso-schema-guide.md` (the correct format).
 
 ## When To Use
 
@@ -25,9 +25,12 @@ Applies `${CLAUDE_PLUGIN_ROOT}/references/data-modeling-principles.md` (the desi
 - **Relationships:** many-to-many via junction entities; no hand-added `*_id` fields; junction entities used where a join needs attributes (§3)
 
 **Performance (scale)**
-- **Indexing:** foreign keys, `WHERE` filters, and `ORDER BY` fields indexed; composite indexes for common multi-column queries, high-selectivity column first (§4)
-- **Big-O / N+1:** relationships shaped for single-query fetches; pagination supported by an indexed sequential field (§5)
-- **Cardinality:** high-cardinality fields indexed; low-cardinality indexed only when selective (§5)
+- **Indexes match the queries:** for each list or lookup the app runs (ask, or infer from the screens), an index with the equality columns first (the `scopeBy` tenant filter counts) and the range or `ORDER BY` column next, so Postgres neither filters nor sorts rows it could skip (`postgres-performance.md`, Choosing indexes)
+- **Every foreign key leads exactly one index:** `"index": true` on the `ManyToOne`, or an `indexes`/`uniques` entry that starts with it, not both
+- **No wasted indexes:** none that another index, unique or the primary key already starts with; none on a boolean or few-valued status alone; none on columns no query filters or sorts by
+- **Uniques that hold:** business keys unique per tenant (`["organizationId", "slug"]`); a nullable column inside a composite unique lets duplicates through, because NULLs never collide
+- **Growth:** `serial` keys are 32-bit; unbounded tables (events, logs, messages, line items) use `"primaryKeyType": "uuid"`
+- **Big-O / N+1:** relationships shaped for single-query fetches; paginated lists ordered by an indexed column ending in a unique tie-breaker (§5)
 
 **Conventions & correctness**
 - `created_at` / `updated_at` on every entity

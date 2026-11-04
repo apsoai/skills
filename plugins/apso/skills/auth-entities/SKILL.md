@@ -1,7 +1,7 @@
 ---
 name: auth-entities
 category: auth
-description: Add authentication entities to a schema. Defines users, accounts, sessions, verification tokens, roles, and permissions. Triggers on "add auth entities", "user authentication schema", "roles and permissions", "RBAC schema".
+description: Add authentication entities to a schema. Defines users, accounts, sessions, verification tokens, roles, and permissions. Use for any change to who belongs to what and what they may do: users in several organizations, memberships with a role per organization, custom roles, permissions on resources. Triggers on "add auth entities", "user authentication schema", "roles and permissions", "RBAC schema", "users belong to several organizations", "role in each organization", "custom roles", "fine-grained permissions", "membership".
 ---
 
 # Authentication Entity Patterns

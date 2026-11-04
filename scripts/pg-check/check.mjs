@@ -10,22 +10,14 @@
 // Also checks convergence: the migrated database must have the same columns,
 // types, nullability and enum values as fresh DDL generated from the agent's
 // final .apsorc, or the deployed code and the database disagree.
-import { PGlite } from '@electric-sql/pglite'
-import ts from 'typescript'
-import { execFileSync } from 'node:child_process'
-import { readFileSync, readdirSync, existsSync, mkdtempSync, mkdirSync, copyFileSync, rmSync } from 'node:fs'
+import { readFileSync, existsSync, mkdtempSync, mkdirSync, copyFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { createRequire } from 'node:module'
+import { newDb, writeMigration, migrationFiles, loadMigrations, queryRunner, schemaDb } from './lib.mjs'
 
 const [caseDir, cwd] = process.argv.slice(2)
 const failures = []
 const fail = msg => failures.push(msg)
-
-// APSO_CLI_BIN (a local bin/run) tests an unreleased CLI; otherwise the latest.
-const apso = (args, opts) => process.env.APSO_CLI_BIN
-  ? execFileSync('node', [process.env.APSO_CLI_BIN, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...opts })
-  : execFileSync('npx', ['-y', '@apso/cli@latest', ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...opts })
 
 // The template loads migrations/*-migration.js, so any other name never runs.
 let migDir = join(cwd, 'src', 'migrations')
@@ -35,60 +27,24 @@ if (existsSync(planFile)) {
   mkdirSync(join(work, '.apso'))
   copyFileSync(join(cwd, '.apsorc'), join(work, '.apsorc'))
   copyFileSync(planFile, join(work, '.apso', 'migration-plan.json'))
-  let out
   try {
-    out = apso(['migrate', '--json', '--skip-generate', '--skip-verify'], { cwd: work })
+    migDir = writeMigration(work)
   } catch (e) {
-    out = e.stdout ?? ''
-  }
-  let result
-  try { result = JSON.parse(out) } catch { result = { status: 'failed', error: out.slice(-1000) } }
-  if (result.status !== 'written') {
-    const detail = result.status === 'questions' ? `open questions: ${result.open.map(q => q.id).join(', ')}` : result.error
-    console.log(`FAIL apso migrate wrote no migration from the answered plan (${result.status}): ${detail}`)
+    console.log(`FAIL ${e.message} (from the answered plan)`)
     process.exit(1)
   }
-  migDir = join(work, 'src', 'migrations')
 }
-const files = existsSync(migDir) ? readdirSync(migDir).filter(f => /-migration\.ts$/.test(f)).sort() : []
+const files = existsSync(migDir) ? migrationFiles(migDir) : []
 if (!files.length) {
   console.log('FAIL no migration file matching src/migrations/*-migration.ts (the deploy would change nothing)')
   process.exit(1)
 }
 
-function loadMigrations(file) {
-  const src = readFileSync(join(migDir, file), 'utf8')
-  const js = ts.transpileModule(src, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText
-  const mod = { exports: {} }
-  const req = createRequire(import.meta.url)
-  // typeorm is only imported for types (MigrationInterface, QueryRunner).
-  new Function('module', 'exports', 'require', js)(mod, mod.exports, id => (id === 'typeorm' ? {} : req(id)))
-  return Object.values(mod.exports).filter(v => typeof v === 'function' && typeof v.prototype?.up === 'function')
-}
-
-// Only raw SQL is supported, which is what TypeORM's own generated migrations use.
-function queryRunner(tx) {
-  const qr = {
-    async query(sql, params) {
-      try {
-        return (await tx.query(sql, params ?? [])).rows
-      } catch (e) {
-        if (params?.length || !/multiple commands/i.test(e.message)) throw e
-        const out = await tx.exec(sql)
-        return out.at(-1)?.rows ?? []
-      }
-    }
-  }
-  return new Proxy(qr, {
-    get: (t, k) => (k in t ? t[k] : () => { throw new Error(`queryRunner.${String(k)} is not supported here; use queryRunner.query(sql)`) })
-  })
-}
-
-const db = new PGlite()
+const db = await newDb()
 await db.exec(readFileSync(join(caseDir, 'before.sql'), 'utf8'))
 
 for (const file of files) {
-  const classes = loadMigrations(file)
+  const classes = loadMigrations(migDir, file)
   if (!classes.length) fail(`${file}: exports no migration class with up()`)
   for (const C of classes) {
     try {
@@ -126,20 +82,15 @@ async function shape(d) {
 }
 
 if (!failures.length && existsSync(join(cwd, '.apsorc'))) {
-  const tmp = mkdtempSync(join(tmpdir(), 'apso-ddl-'))
   try {
-    copyFileSync(join(cwd, '.apsorc'), join(tmp, '.apsorc'))
-    const out = apso(['migrate', 'sandbox', '--sql'], { cwd: tmp })
-    const ddl = out.split('\n').filter(l => /^(CREATE|ALTER)\b/.test(l)).join('\n')
-    const fresh = new PGlite()
-    await fresh.exec(ddl)
+    const fresh = await schemaDb(join(cwd, '.apsorc'))
     const want = await shape(fresh), have = await shape(db)
     const missing = [...want].filter(x => !have.has(x)), extra = [...have].filter(x => !want.has(x))
     if (missing.length || extra.length) {
       fail(`database does not match the final .apsorc. Expected but missing: ${missing.join('; ') || 'none'}. Present but not expected: ${extra.join('; ') || 'none'}`)
     }
-  } finally {
-    rmSync(tmp, { recursive: true, force: true })
+  } catch (e) {
+    fail(e.message)
   }
 }
 

@@ -1,0 +1,20 @@
+{
+  "queries": [
+    { "file": "queries/project-open-tasks.sql", "params": [1], "ordered": true,
+      "expect": [
+        { "project_id": 1, "name": "Apollo", "open_tasks": 2 },
+        { "project_id": 2, "name": "Borealis", "open_tasks": 0 },
+        { "project_id": 3, "name": "Cosmos", "open_tasks": 0 }
+      ] },
+    { "file": "queries/idle-users.sql", "params": [1], "ordered": true,
+      "expect": [ { "user_id": 2, "name": "Ben" }, { "user_id": 3, "name": "Cy" } ] },
+    { "file": "queries/project-totals.sql", "params": [1], "ordered": true,
+      "expect": [
+        { "project_id": 1, "hours": 8, "comments": 3 },
+        { "project_id": 2, "hours": 1.5, "comments": 0 },
+        { "project_id": 3, "hours": 0, "comments": 0 }
+      ] },
+    { "file": "queries/october-tasks.sql", "params": [1], "ordered": true,
+      "expect": [ { "task_id": 1 }, { "task_id": 2 } ] }
+  ]
+}
