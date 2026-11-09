@@ -1,0 +1,47 @@
+{
+ "title": "Support Ticketing",
+ "entities": [
+  [
+   "ticket"
+  ],
+  [
+   "ticketreply",
+   "reply",
+   "ticketmessage"
+  ],
+  [
+   "agent"
+  ],
+  [
+   "team"
+  ],
+  [
+   "tickettag",
+   "tag"
+  ],
+  [
+   "cannedresponse"
+  ],
+  [
+   "slapolicy"
+  ],
+  [
+   "slabreach"
+  ],
+  [
+   "customersatisfaction",
+   "csat",
+   "csatrating",
+   "satisfactionrating",
+   "csatresponse"
+  ],
+  [
+   "macro"
+  ],
+  [
+   "ticketview",
+   "view",
+   "savedview"
+  ]
+ ]
+}

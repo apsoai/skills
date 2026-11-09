@@ -43,8 +43,15 @@ const indexes = (await db.query(`
   JOIN pg_namespace s ON s.oid = t.relnamespace WHERE s.nspname = 'public'`)).rows
 
 const leads = (a, b) => a.length <= b.length && a.every((c, i) => c === b[i])
+// A ManyToMany join table (two columns, both foreign keys) gets a one-column
+// index from TypeORM next to its two-column key; the schema can't avoid it.
+const joinTables = new Set((await db.query(`
+  SELECT t.relname AS tbl FROM pg_class t JOIN pg_namespace s ON s.oid = t.relnamespace
+  WHERE s.nspname = 'public' AND t.relkind = 'r'
+    AND (SELECT count(*) FROM pg_attribute a WHERE a.attrelid = t.oid AND a.attnum > 0 AND NOT a.attisdropped) = 2
+    AND (SELECT count(*) FROM pg_constraint c WHERE c.conrelid = t.oid AND c.contype = 'f') = 2`)).rows.map(r => r.tbl))
 for (const ix of indexes) {
-  if (ix.uniq) continue
+  if (ix.uniq || joinTables.has(ix.tbl)) continue
   const cover = indexes.find(o => o !== ix && o.tbl === ix.tbl && leads(ix.cols, o.cols) && (o.cols.length > ix.cols.length || o.uniq || o.name < ix.name))
   if (cover) fail(`redundant index on ${ix.tbl}(${ix.cols.join(', ')}): ${cover.uniq ? 'the unique constraint or key' : 'the index'} on (${cover.cols.join(', ')}) already serves it`)
   if (ix.cols.length === 1 && ix.types[0] === 'boolean') fail(`index on the boolean ${ix.tbl}.${ix.cols[0]}: two values, so Postgres reads half the table either way`)

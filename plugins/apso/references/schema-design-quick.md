@@ -19,7 +19,7 @@ Everything needed to write a new `.apsorc` that deploys. The full guides (`apso-
 ## Names (what Apso generates)
 
 - Entity names are PascalCase with acronyms written as words: `SlaPolicy`, `WorkspaceApiKey`, `CsatRating`. Not `SLAPolicy` or `APIKey`: Apso turns `SLAPolicy` into the table `s_l_a_policy` and the foreign key `slapolicyId`.
-- A `ManyToOne` adds the column `<to_name or to, first letter lowercased>Id`: `to: "SlaPolicy"` gives `slaPolicyId`, `to: "User", to_name: "assignee"` gives `assigneeId`. Use these names in `indexes`, `uniques` and `scopeBy`. Never add the foreign key as a field too.
+- A `ManyToOne` adds the column `<to_name or to, first letter lowercased>Id`: `to: "SlaPolicy"` gives `slaPolicyId`, `to: "User", to_name: "assignee"` gives `assigneeId`. Use these names in `indexes`, `uniques` and `scopeBy`. `to: "ProductVariant"` gives `productVariantId`; to get `variantId`, set `"to_name": "variant"`. Never add the foreign key as a field too.
 - `"created_at": true` and `"updated_at": true` add columns named `created_at` and `updated_at`. Index them by those names, not `createdAt`.
 - The primary key is `id`. For tables that grow without bound (events, logs, messages, line items) set `"primaryKeyType": "uuid"`. Never add an `id` field.
 
@@ -42,7 +42,7 @@ Types: `text`, `varchar`, `integer`, `float`, `decimal`, `numeric`, `boolean`, `
 - Two links to the same entity need distinct `to_name`s (`owner`, `assignee`).
 - A tree is one self `ManyToOne` with `"to_name": "parent", "nullable": true`.
 - Many-to-many with no extra columns: one `ManyToMany`. If the link carries data (role, joinedAt, position), make it a junction entity with two `ManyToOne`s and a `uniques` entry on the pair.
-- `OneToOne` puts the foreign key on the `from` entity.
+- `OneToOne` puts the foreign key on the `from` entity, and Apso makes that column unique, which also indexes it. Use it for one row per parent (settings, a CSAT rating per ticket). Never name a OneToOne's column in `indexes` or `uniques`: it is already unique, and `apso migrate` rejects the entry as "not a field".
 
 ## Tenancy
 
@@ -58,4 +58,9 @@ The tenant root (usually `Organization`) is an entity. Every entity holding tena
 
 ## Before writing
 
-Check, entity by entity: every requested entity is present; every `scopeBy` column exists; for every `ManyToOne`, exactly one of `"index": true` or an `indexes`/`uniques` entry starts with its column; no `array` fields; no acronym runs in entity names. Then write `.apsorc` once.
+Check, entity by entity, then write `.apsorc` once:
+
+1. Every requested entity is present.
+2. Every column named in `scopeBy`, `indexes` or `uniques` is a field of this entity or the column of a `ManyToOne` declared `from` this entity, spelled exactly as the Names section builds it (`productVariantId`, not `variantId`, unless `to_name` is `variant`). A relationship declared from the other entity, or a `ManyToMany`, puts no column here; a tenant column needs its own `ManyToOne` to `Organization`. A `OneToOne` column goes in `scopeBy` only, never in `indexes` or `uniques`.
+3. For every `ManyToOne`, including the one to `Organization`, exactly one of `"index": true` or an `indexes`/`uniques` entry starts with its column. When a unique such as `["organizationId", "code"]` exists, the `Organization` link has no `"index": true`.
+4. No `array` fields and no acronym runs in entity names.

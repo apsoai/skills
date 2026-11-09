@@ -1,0 +1,38 @@
+{
+ "title": "E-Commerce Store",
+ "entities": [
+  [
+   "product"
+  ],
+  [
+   "category"
+  ],
+  [
+   "productvariant",
+   "variant"
+  ],
+  [
+   "customer"
+  ],
+  [
+   "cart",
+   "shoppingcart"
+  ],
+  [
+   "cartitem"
+  ],
+  [
+   "order"
+  ],
+  [
+   "orderitem"
+  ],
+  [
+   "coupon"
+  ],
+  [
+   "review",
+   "productreview"
+  ]
+ ]
+}

@@ -1,0 +1,38 @@
+{
+ "title": "Customer CRM",
+ "entities": [
+  [
+   "contact"
+  ],
+  [
+   "company"
+  ],
+  [
+   "deal"
+  ],
+  [
+   "activity"
+  ],
+  [
+   "note"
+  ],
+  [
+   "task"
+  ],
+  [
+   "email",
+   "emailmessage",
+   "emailthread"
+  ],
+  [
+   "pipeline",
+   "pipelinestage"
+  ],
+  [
+   "tag"
+  ],
+  [
+   "report"
+  ]
+ ]
+}

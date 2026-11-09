@@ -1,0 +1,14 @@
+schema_version: "1.1"
+name: build-project-management
+tags: [build, quick-start]
+# The site's "Project Management" quick-start prompt, verbatim. Graded after the run by
+# scripts/grade-builds.sh (entities present, valid scopeBy) and index-check with
+# no queries (deploys in Postgres, every FK indexed, no redundant index).
+context:
+  add_dirs: [refs]
+execution:
+  prompt_file: prompt.md
+  max_turns: 30
+  timeout_seconds: 1800
+  allowed_tools: [Read, Glob, Grep, Skill, Write]
+graders: []
