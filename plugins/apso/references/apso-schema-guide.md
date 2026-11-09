@@ -203,7 +203,7 @@ Every value is a column on the entity itself. Don't write a nested path such as 
 | `enum` | Enumerated values | `values` (required) |
 | `json` | JSON column, stored as Postgres `jsonb` | |
 | `json-plain` | JSON column, stored as Postgres `json` | |
-| `array` | Postgres array (`text[]` unless `elementType` is set) | `elementType` |
+| `array` | Postgres array (`text[]` unless `elementType` is set). `apso migrate` can't write it yet, so a schema with an array field won't deploy; use `json` for lists. | `elementType` |
 
 ---
 
