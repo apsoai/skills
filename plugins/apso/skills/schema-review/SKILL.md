@@ -25,7 +25,7 @@ Applies `${CLAUDE_PLUGIN_ROOT}/references/data-modeling-principles.md` (the desi
 - **Relationships:** many-to-many via junction entities; no hand-added `*_id` fields; junction entities used where a join needs attributes (§3)
 
 **Performance (scale)**
-- **Indexes match the queries:** for each list or lookup the app runs (ask, or infer from the screens), an index with the equality columns first (the `scopeBy` tenant filter counts) and the range or `ORDER BY` column next, so Postgres neither filters nor sorts rows it could skip (`postgres-performance.md`, Choosing indexes)
+- **Indexes match the queries:** for each list or lookup the app runs (ask, or infer from the screens), an index with the equality columns first and the range or `ORDER BY` column next, so Postgres neither filters nor sorts rows it could skip (`postgres-performance.md`, Choosing indexes). When the query filters on a foreign key, that key goes first, not the tenant column: an invoice's line items are `["invoiceId", "position"]`, not `["organizationId", "invoiceId", "position"]`, because the invoice already pins one tenant and an index starting with `organizationId` leaves `invoiceId` unindexed. Lead with `organizationId` only when the query filters on no foreign key.
 - **Every foreign key leads exactly one index:** `"index": true` on the `ManyToOne`, or an `indexes`/`uniques` entry that starts with it, not both
 - **No wasted indexes:** none that another index, unique or the primary key already starts with; none on a boolean or few-valued status alone; none on columns no query filters or sorts by
 - **Uniques that hold:** business keys unique per tenant (`["organizationId", "slug"]`); a nullable column inside a composite unique lets duplicates through, because NULLs never collide
@@ -51,6 +51,7 @@ Applies `${CLAUDE_PLUGIN_ROOT}/references/data-modeling-principles.md` (the desi
 2. Evaluate it against the checklist in `data-modeling-principles.md` and the anti-pattern table at the end of `relational-patterns.md`. When a fix needs a guarantee `.apsorc` cannot express, say so and name where to enforce it.
 3. Produce **findings**, each with: severity (blocker / recommended / optional), the issue, why it matters, and the **exact `.apsorc` change** to apply.
 4. Offer to apply the accepted fixes.
+5. Before returning a corrected `.apsorc`, check its foreign keys one by one. For every `ManyToOne`, name its column (`<to_name or to>Id`) and the one index whose first field is that column: `"index": true` on the relationship, or an `indexes`/`uniques` entry that starts with it. If none starts with it, add `"index": true`. If two do, remove one.
 
 ## Output Format
 
