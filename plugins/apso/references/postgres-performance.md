@@ -8,7 +8,7 @@ Facts below are from the PostgreSQL 18 docs (postgresql.org/docs/18: indexes-mul
 
 - Every `.apsorc` index is a btree. `"index": true` on a field or a `ManyToOne` gives a single-column index. `"indexes": [{ "fields": [...] }]` gives a multi-column index in that column order; `"unique": true` on it makes it a unique index. `"uniques"` and field `"unique": true` give unique constraints, which Postgres backs with a unique btree index.
 - The primary key is already indexed. Never add an index on `id`.
-- A `OneToOne`'s foreign key column is already unique, so it is indexed; don't list it in `indexes` or `uniques` (the linter rejects it as an unknown field). It is always nullable and deletes with its parent.
+- A `OneToOne`'s foreign key column is already unique, so it is indexed; don't list it alone in `indexes` or `uniques`. A composite entry that includes it works from `@apso/cli` 0.47.6; older linters reject it as an unknown field. It is always nullable and deletes with its parent.
 - Foreign key columns are named `<to_name or entity>Id` (`projectId`, `assigneeId`) and are NOT indexed unless you ask. `created_at` and `updated_at` are real columns you can list in `indexes`.
 - `scopeBy` adds `"organizationId" = <caller's org>` to every generated list, get, update and delete. Count it as an equality filter on every query of a scoped entity.
 - Apso cannot emit partial, expression, covering (`INCLUDE`), GIN, BRIN or trigram indexes, `CHECK` constraints, `ON DELETE SET NULL`, or `NULLS NOT DISTINCT`. When a design needs one, emit the closest btree, then tell the user what is missing and the SQL to add it by hand.

@@ -89,7 +89,7 @@ The quick reference covers what a new design needs. `${CLAUDE_PLUGIN_ROOT}/refer
 
 ### Quick Reference
 
-**Field types:** `text`, `varchar`, `integer`, `float`, `decimal`, `numeric`, `boolean`, `date`, `timestamptz`, `timestamp`, `enum`, `json`, `uuid`. Store lists as `json`: `apso migrate` can't write `array` yet.
+**Field types:** `text`, `varchar`, `integer`, `float`, `decimal`, `numeric`, `boolean`, `date`, `timestamptz`, `timestamp`, `enum`, `json`, `uuid`. Store lists as `json`; `array` needs `@apso/cli` 0.48.0 or later.
 
 **Picking a type:**
 - Moments in time (`paidAt`, `expiresAt`, `scheduledFor`) are `timestamptz`. `date` stores a calendar day with no time, so use it only for things like `birthDate` or `dueDate`.

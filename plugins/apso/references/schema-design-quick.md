@@ -29,7 +29,7 @@ Everything needed to write a new `.apsorc` that deploys. The full guides (`apso-
 
 Types: `text`, `varchar`, `integer`, `float`, `decimal`, `numeric`, `boolean`, `date`, `timestamptz`, `timestamp`, `uuid`, `enum`, `json`.
 
-- Lists (tags, scopes, permissions, recipients, feature lists) are `json`. Do not use `array`: `apso migrate` cannot write it yet and the schema will not deploy.
+- Lists (tags, scopes, permissions, recipients, feature lists) are `json`, which deploys on every CLI version. `array` (`text[]`, or set `elementType` such as `integer`) needs `@apso/cli` 0.48.0 or later; older versions refuse the schema.
 - Moments (`paidAt`, `expiresAt`) are `timestamptz`; `date` is a calendar day only.
 - Long text (descriptions, notes, bodies) is `text`; `varchar` truncates at 255.
 - Money is `decimal` with `precision` and `scale`.
@@ -42,7 +42,7 @@ Types: `text`, `varchar`, `integer`, `float`, `decimal`, `numeric`, `boolean`, `
 - Two links to the same entity need distinct `to_name`s (`owner`, `assignee`).
 - A tree is one self `ManyToOne` with `"to_name": "parent", "nullable": true`.
 - Many-to-many with no extra columns: one `ManyToMany`. If the link carries data (role, joinedAt, position), make it a junction entity with two `ManyToOne`s and a `uniques` entry on the pair.
-- `OneToOne` puts the foreign key on the `from` entity, and Apso makes that column unique, which also indexes it. Use it for one row per parent (settings, a CSAT rating per ticket). Never name a OneToOne's column in `indexes` or `uniques`: it is already unique, and `apso migrate` rejects the entry as "not a field".
+- `OneToOne` puts the foreign key on the `from` entity, and Apso makes that column unique, which also indexes it. Use it for one row per parent (settings, a CSAT rating per ticket). Don't add a unique or index on that column alone: it is already unique. A composite entry that includes it (`["workspaceId", "key"]`) works from `@apso/cli` 0.47.6; older versions reject it as "not a field".
 
 ## Tenancy
 
@@ -61,6 +61,6 @@ The tenant root (usually `Organization`) is an entity. Every entity holding tena
 Check, entity by entity, then write `.apsorc` once:
 
 1. Every requested entity is present.
-2. Every column named in `scopeBy`, `indexes` or `uniques` is a field of this entity or the column of a `ManyToOne` declared `from` this entity, spelled exactly as the Names section builds it (`productVariantId`, not `variantId`, unless `to_name` is `variant`). A relationship declared from the other entity, or a `ManyToMany`, puts no column here; a tenant column needs its own `ManyToOne` to `Organization`. A `OneToOne` column goes in `scopeBy` only, never in `indexes` or `uniques`.
+2. Every column named in `scopeBy`, `indexes` or `uniques` is a field of this entity or the column of a `ManyToOne` declared `from` this entity, spelled exactly as the Names section builds it (`productVariantId`, not `variantId`, unless `to_name` is `variant`). A relationship declared from the other entity, or a `ManyToMany`, puts no column here; a tenant column needs its own `ManyToOne` to `Organization`. A `OneToOne` column can lead a composite entry, never a single-column one.
 3. For every `ManyToOne`, including the one to `Organization`, exactly one of `"index": true` or an `indexes`/`uniques` entry starts with its column. When a unique such as `["organizationId", "code"]` exists, the `Organization` link has no `"index": true`.
-4. No `array` fields and no acronym runs in entity names.
+4. Lists are `json` unless the project's CLI is 0.48.0 or later, and no acronym runs in entity names.

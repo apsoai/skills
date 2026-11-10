@@ -6,7 +6,7 @@ Each entry gives: **Use when**, **Postgres**, **.apsorc**, and **Missing** (the 
 
 ## What `.apsorc` can and cannot express
 
-Can: `primaryKeyType` `uuid` or `serial`; field types `text`, `varchar`, `integer`, `float`, `decimal`/`numeric`, `boolean`, `date`, `timestamptz`, `timestamp`, `uuid`, `enum`, `json` (stored as `jsonb`) and `array` (but `apso migrate` can't write `array` yet, so use `json` for lists); `nullable`, `unique`, `index`, `default`; multi-column `indexes` (optionally `unique: true`) and `uniques`; relationships with `to_name`, `nullable`, `index`, `cascadeDelete`; `created_at` / `updated_at`; `scopeBy`; `emitEvents`.
+Can: `primaryKeyType` `uuid` or `serial`; field types `text`, `varchar`, `integer`, `float`, `decimal`/`numeric`, `boolean`, `date`, `timestamptz`, `timestamp`, `uuid`, `enum`, `json` (stored as `jsonb`) and `array` (`array` needs `@apso/cli` 0.48.0 or later; `json` works everywhere); `nullable`, `unique`, `index`, `default`; multi-column `indexes` (optionally `unique: true`) and `uniques`; relationships with `to_name`, `nullable`, `index`, `cascadeDelete`; `created_at` / `updated_at`; `scopeBy`; `emitEvents`.
 
 Cannot: `CHECK` constraints, partial or expression indexes (`WHERE deleted_at IS NULL`, `lower(email)`), exclusion constraints, range types, `ON DELETE SET NULL`, composite primary or foreign keys, payload columns on an implicit `ManyToMany` join table, a version column, views, triggers.
 
