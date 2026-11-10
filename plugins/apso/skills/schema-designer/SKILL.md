@@ -17,11 +17,18 @@ A `.apsorc` schema file with:
 - Composite indexes for query performance
 - Validation rules (unique, nullable, defaults, enums)
 
+## Working Efficiently
+
+Read `${CLAUDE_PLUGIN_ROOT}/references/schema-design-quick.md` first, and for a new schema read nothing else unless a requirement needs a pattern it doesn't cover. It has the file shape, the column names Apso generates, field types, relationships, tenancy and index rules. Every file read is paid for again on each later turn, so:
+
+- Don't search the project for an existing `.apsorc` when the task is a new design.
+- Design the whole schema in one pass, run the checks in "Before writing" in the quick reference, and write `.apsorc` once. Don't print it back, re-read it, or rewrite it unless a check failed.
+
 ## Design Principles
 
-I apply `${CLAUDE_PLUGIN_ROOT}/references/data-modeling-principles.md` throughout — normalization (3NF), modeling interactions as **event entities not counters**, junction entities for many-to-many, and a deliberate indexing strategy for scale. For a deeper audit of an existing schema, use the `schema-review` skill.
+Normalize to 3NF, model interactions (likes, views, follows) as **event entities, not counters**, use junction entities for many-to-many links that carry data, and index for the queries the screens run. For a deeper audit of an existing schema, use the `schema-review` skill.
 
-For specific patterns, read `${CLAUDE_PLUGIN_ROOT}/references/relational-patterns.md`. It covers trees, subtypes, versioned rows, effective dates, orders and lines, money, custom fields, comments and reactions, ordering and per-tenant numbering. Each entry gives the Postgres design and its `.apsorc` encoding. When a pattern needs a guarantee `.apsorc` cannot express (a `CHECK`, a partial unique index, overlap prevention), encode the closest form and tell the user which guarantee is missing and where to enforce it.
+For patterns the quick reference doesn't cover (trees with ordering, subtypes, versioned rows, effective dates, custom fields, per-tenant numbering), read the matching entry in `${CLAUDE_PLUGIN_ROOT}/references/relational-patterns.md`. Each entry gives the Postgres design and its `.apsorc` encoding. When a pattern needs a guarantee `.apsorc` cannot express (a `CHECK`, a partial unique index, overlap prevention), encode the closest form and tell the user which guarantee is missing and where to enforce it.
 
 ## How I Work
 
@@ -51,21 +58,19 @@ For each entity pair:
 - Declare each relationship once, as a `ManyToOne` from the child to the parent. Apso generates the inverse collection on the parent. Do not also declare the `OneToMany`: a second declaration is redundant, and when the two name the collection differently (a `to_name` on the OneToMany), the parent gets two collections for the same foreign key.
 - A self-reference (tree) is one `ManyToOne` with `to_name: "parent"` and `nullable: true`. Do not add a `children` OneToMany.
 - Use `to_name` when an entity has multiple relationships to the same target
-- Set `"index": true` on every `ManyToOne`. Apso does not index foreign keys on its own.
+- Set `"index": true` on every `ManyToOne`. Apso does not index foreign keys on its own. Skip it only when an `indexes` or `uniques` entry already starts with that foreign key column; a second index on the same leading column is a duplicate that every insert pays for.
 
 ### Step 4: Add Multi-Tenancy
 
 Business entities get `scopeBy` pointing to the tenant identifier (usually `organizationId`). This generates guards that automatically filter queries, verify access, and inject scope values on create.
 
-Follow `${CLAUDE_PLUGIN_ROOT}/references/tenant-scoping.md`. Every entity that holds tenant data is scoped, including children such as comments, line items, and attachments. Each one has its own tenant column, through a many-to-one relationship to the tenant or a plain field. Never scope through a parent with a dot path such as `task.organizationId`.
+Every entity that holds tenant data is scoped, including children such as comments, line items, and attachments. Each one has its own tenant column, through a many-to-one relationship to the tenant or a plain field. Never scope through a parent with a dot path such as `task.organizationId`.
 
-Exceptions: the Organization entity itself, global lookup tables, and auth entities.
-
-Run the checklist in `tenant-scoping.md` before you print the final `.apsorc`.
+Exceptions: the Organization entity itself, global lookup tables, and auth entities. For retrofits, shared rows or cross-tenant admin access, see `${CLAUDE_PLUGIN_ROOT}/references/tenant-scoping.md`.
 
 ### Step 5: Add Indexes
 
-Add composite indexes for common query patterns:
+Derive indexes from the queries the app will run, not from the columns. For each list or lookup: equality columns first (count the `scopeBy` tenant filter as one), then the one range or ORDER BY column. A board that shows one project's tasks in one status by due date needs `["projectId", "status", "dueDate"]`. Don't index a boolean or a few-valued status on its own, don't repeat an index another index or unique already starts with, and don't add an index no query uses.
 
 ```json
 "indexes": [
@@ -76,15 +81,15 @@ Add composite indexes for common query patterns:
 
 ### Step 6: Validate
 
-If the Apso CLI is available, run `apso schema validate --local` in the project folder. Fix every error, and every `FOREIGN_KEY_NOT_INDEXED` warning. Other warnings can stay when there is a reason (for example `MISSING_TIMESTAMPS` on append-only rows).
+If the Apso CLI is available, run `apso schema validate --local` in the project folder. Fix every error, and every `FOREIGN_KEY_NOT_INDEXED` warning, except one on a foreign key that already leads a `uniques` entry (that unique index covers it; older linters don't count uniques). Other warnings can stay when there is a reason (for example `MISSING_TIMESTAMPS` on append-only rows).
 
 ## Schema Format Reference
 
-Read `${CLAUDE_PLUGIN_ROOT}/references/apso-schema-guide.md` for the complete field type table, relationship patterns, auth configuration, and working examples.
+The quick reference covers what a new design needs. `${CLAUDE_PLUGIN_ROOT}/references/apso-schema-guide.md` is the complete format, including auth configuration and scope options.
 
 ### Quick Reference
 
-**Field types:** `text`, `varchar`, `integer`, `float`, `decimal`, `numeric`, `boolean`, `date`, `timestamptz`, `timestamp`, `enum`, `json`, `uuid`, `array`
+**Field types:** `text`, `varchar`, `integer`, `float`, `decimal`, `numeric`, `boolean`, `date`, `timestamptz`, `timestamp`, `enum`, `json`, `uuid`. Store lists as `json`; `array` needs `@apso/cli` 0.48.0 or later.
 
 **Picking a type:**
 - Moments in time (`paidAt`, `expiresAt`, `scheduledFor`) are `timestamptz`. `date` stores a calendar day with no time, so use it only for things like `birthDate` or `dueDate`.

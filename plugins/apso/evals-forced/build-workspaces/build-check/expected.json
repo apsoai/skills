@@ -1,0 +1,46 @@
+{
+ "title": "Multi-Tenant Workspaces",
+ "entities": [
+  [
+   "workspace"
+  ],
+  [
+   "workspacemember",
+   "member"
+  ],
+  [
+   "workspaceinvite",
+   "invite",
+   "invitation",
+   "workspaceinvitation"
+  ],
+  [
+   "workspacesetting",
+   "setting"
+  ],
+  [
+   "workspacedomain",
+   "domain"
+  ],
+  [
+   "workspacebilling",
+   "billing"
+  ],
+  [
+   "workspaceapikey",
+   "apikey"
+  ],
+  [
+   "workspacewebhook",
+   "webhook"
+  ],
+  [
+   "workspaceauditlog",
+   "auditlog"
+  ],
+  [
+   "workspacelimit",
+   "limit"
+  ]
+ ]
+}

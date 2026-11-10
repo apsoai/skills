@@ -6,7 +6,7 @@ Each entry gives: **Use when**, **Postgres**, **.apsorc**, and **Missing** (the 
 
 ## What `.apsorc` can and cannot express
 
-Can: `primaryKeyType` `uuid` or `serial`; field types `text`, `varchar`, `integer`, `float`, `decimal`/`numeric`, `boolean`, `date`, `timestamptz`, `timestamp`, `uuid`, `enum`, `json` (stored as `jsonb`), `array`; `nullable`, `unique`, `index`, `default`; multi-column `indexes` (optionally `unique: true`) and `uniques`; relationships with `to_name`, `nullable`, `index`, `cascadeDelete`; `created_at` / `updated_at`; `scopeBy`; `emitEvents`.
+Can: `primaryKeyType` `uuid` or `serial`; field types `text`, `varchar`, `integer`, `float`, `decimal`/`numeric`, `boolean`, `date`, `timestamptz`, `timestamp`, `uuid`, `enum`, `json` (stored as `jsonb`) and `array` (`array` needs `@apso/cli` 0.48.0 or later; `json` works everywhere); `nullable`, `unique`, `index`, `default`; multi-column `indexes` (optionally `unique: true`) and `uniques`; relationships with `to_name`, `nullable`, `index`, `cascadeDelete`; `created_at` / `updated_at`; `scopeBy`; `emitEvents`.
 
 Cannot: `CHECK` constraints, partial or expression indexes (`WHERE deleted_at IS NULL`, `lower(email)`), exclusion constraints, range types, `ON DELETE SET NULL`, composite primary or foreign keys, payload columns on an implicit `ManyToMany` join table, a version column, views, triggers.
 
@@ -17,7 +17,7 @@ Foreign key columns are named `<to_name or entity>Id` (for example `projectId`, 
 - Declare each relationship once, as a `ManyToOne` from the child. Apso generates the inverse collection. Do not add the matching `OneToMany` as well: a second declaration is redundant, and when the two name the collection differently (a `to_name` on the OneToMany), the parent gets two collections for the same foreign key.
 - A self-reference is one `ManyToOne` with a `to_name` and `nullable: true`. No `children` OneToMany.
 - Two relationships to the same entity need distinct `to_name` values (`author`, `assignee`).
-- Set `"index": true` on every `ManyToOne`. Apso does not index foreign keys on its own.
+- Set `"index": true` on every `ManyToOne`. Apso does not index foreign keys on its own. Skip it when an `indexes` or `uniques` entry already starts with that foreign key column, which covers it. Choose composite indexes from the queries; see `postgres-performance.md`.
 
 ## 1. Keys
 
@@ -63,7 +63,7 @@ Foreign key columns are named `<to_name or entity>Id` (for example `projectId`, 
 
 **Effective dating.** Use when: a value is valid for a period (a price, a tax rate, a plan's terms, an assignment). Postgres: `valid_during tstzrange` with `WITHOUT OVERLAPS` or an exclusion constraint. .apsorc: `validFrom` `timestamptz` and `validTo` `timestamptz` with `nullable: true` (open-ended), plus `indexes` on `["<parent>Id", "validFrom"]`. Missing: overlap prevention; check for overlapping periods in the create and update handlers.
 
-**Versioned rows.** Use when: you must keep every past version of a document, contract or config and point at the one in force. Postgres: an identity table plus `entity_version(entity_id, version, ...)`, unique on the pair, and a partial unique index for "one current version". .apsorc: `Contract` plus `ContractVersion` with `{ "from": "ContractVersion", "to": "Contract", "type": "ManyToOne", "cascadeDelete": true }`, an `integer` `version`, and `"uniques": [{ "fields": ["contractId", "version"] }]`. Point at the current version with a nullable `ManyToOne` from `Contract` to `ContractVersion` with `to_name: "currentVersion"`. Missing: the partial unique index; set the current pointer in one handler.
+**Versioned rows.** Use when: you must keep every past version of a document, contract or config and point at the one in force. Postgres: an identity table plus `entity_version(entity_id, version, ...)`, unique on the pair, and a partial unique index for "one current version". .apsorc: `Contract` plus `ContractVersion` with `{ "from": "ContractVersion", "to": "Contract", "type": "ManyToOne", "cascadeDelete": true }`, an `integer` `version`, and `"uniques": [{ "fields": ["contractId", "version"] }]`. Point at the current version with a nullable `ManyToOne` from `Contract` to `ContractVersion` with `to_name: "currentVersion"` and `"bi_directional": false`. Without `bi_directional: false`, Apso drops `ContractVersion`'s own `contractId` column, because the pointer's reverse side takes the same name. Missing: the partial unique index; set the current pointer in one handler.
 
 **Status history.** Use when: you need to know when a record entered each state. .apsorc: an `enum` status on the record, plus a history entity with `fromStatus`, `toStatus`, `changedAt` `timestamptz` and a `ManyToOne` to the record with `cascadeDelete`. Missing: none. See the workflow-state skill.
 
@@ -139,5 +139,9 @@ Foreign key columns are named `<to_name or entity>Id` (for example `projectId`, 
 | Enum for editable values | Enum values that users would want to add | Lookup entity |
 | Counter instead of rows | `likeCount`, `viewCount` incremented in place | Rows, with the count computed or cached |
 | Plain unique on a soft-deleted entity | `unique` plus `deletedAt` | Check among live rows in handlers |
-| Unindexed foreign key | `ManyToOne` used in filters without `index: true` | Add `index: true` |
+| Unindexed foreign key | `ManyToOne` with no `index: true` and no `indexes`/`uniques` entry starting with its column | Add `index: true` |
+| Redundant index | An index whose columns lead another index or unique (`["projectId"]` next to `["projectId", "status"]`), or a FK `index: true` that a unique already starts with | Delete the shorter one |
+| Lone low-cardinality index | `index: true` on a boolean or few-valued status | Move it after a selective column in a composite, or drop it |
+| Nullable column in a composite unique | `uniques` including an optional relationship's column | Duplicates with `NULL` pass; make it required or check in the handler |
+| Two-way pointer without `bi_directional: false` | `A ManyToOne B` (a "current" pointer) plus `B ManyToOne A` | Add `"bi_directional": false` to the pointer, or Apso drops `B`'s foreign key to `A` |
 | Password on User | Any `password` field outside BetterAuth's Account | Use the auth entities |

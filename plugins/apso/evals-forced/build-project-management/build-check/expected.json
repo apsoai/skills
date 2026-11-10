@@ -1,0 +1,42 @@
+{
+ "title": "Project Management",
+ "entities": [
+  [
+   "project"
+  ],
+  [
+   "milestone"
+  ],
+  [
+   "task"
+  ],
+  [
+   "taskdependency",
+   "dependency"
+  ],
+  [
+   "team"
+  ],
+  [
+   "teammember"
+  ],
+  [
+   "comment"
+  ],
+  [
+   "attachment"
+  ],
+  [
+   "timeentry"
+  ],
+  [
+   "label"
+  ],
+  [
+   "sprint"
+  ],
+  [
+   "board"
+  ]
+ ]
+}

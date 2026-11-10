@@ -203,7 +203,7 @@ Every value is a column on the entity itself. Don't write a nested path such as 
 | `enum` | Enumerated values | `values` (required) |
 | `json` | JSON column, stored as Postgres `jsonb` | |
 | `json-plain` | JSON column, stored as Postgres `json` | |
-| `array` | Postgres array (`text[]` unless `elementType` is set) | `elementType` |
+| `array` | Postgres array (`text[]` unless `elementType` is set). Needs `@apso/cli` 0.48.0 or later; older versions refuse it, so use `json` for lists there. | `elementType` |
 
 ---
 

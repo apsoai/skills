@@ -1,0 +1,35 @@
+{
+ "title": "Subscription Billing",
+ "entities": [
+  [
+   "plan"
+  ],
+  [
+   "planfeature"
+  ],
+  [
+   "customer"
+  ],
+  [
+   "subscription"
+  ],
+  [
+   "subscriptionitem"
+  ],
+  [
+   "invoice"
+  ],
+  [
+   "payment"
+  ],
+  [
+   "paymentmethod"
+  ],
+  [
+   "usagerecord"
+  ],
+  [
+   "coupon"
+  ]
+ ]
+}
