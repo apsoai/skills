@@ -9,12 +9,14 @@ enforces this on PRs to `main`.
 
 1. **PR straight to `main`** (no long-lived branches — that's what stranded the
    `domain-events` skill).
-2. **Bump the version** in both files, keeping them identical:
+2. **Bump the version** in all three files, keeping them identical:
    - `plugins/apso/.claude-plugin/plugin.json` → `version`
+   - `plugins/apso/package.json` → `version` (the npm release, `@apso/skills`)
    - `.claude-plugin/marketplace.json` → the `apso` entry's `version`
    - semver: new skill / feature = minor (`0.1.0 → 0.2.0`); fix = patch.
 3. **Validate locally:** `claude plugin validate .`
-4. **Merge to `main`.**
+4. **Merge to `main`.** The `publish-npm` workflow publishes the new version to npm as
+   `@apso/skills` (Trusted Publishing, no token). It skips a version npm already has.
 5. **Tag the release (optional but recommended):**
    `claude plugin tag --push -m "apso %s"` — creates `apso--v<version>`, validating that
    `plugin.json` and the marketplace entry agree.

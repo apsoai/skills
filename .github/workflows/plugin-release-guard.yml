@@ -32,9 +32,11 @@ jobs:
           plugin_ver=$(jq -r '.version' "$PLUGIN_MANIFEST")
           market_ver=$(jq -r '.plugins[] | select(.name=="apso") | .version' "$MARKET_MANIFEST")
 
-          # 1. The two manifests must advertise the same version.
-          if [ "$plugin_ver" != "$market_ver" ]; then
-            echo "::error::Version mismatch: plugin.json=$plugin_ver but marketplace.json=$market_ver. They must agree."
+          npm_ver=$(jq -r '.version' plugins/apso/package.json)
+
+          # 1. The manifests must advertise the same version (package.json is the npm release).
+          if [ "$plugin_ver" != "$market_ver" ] || [ "$plugin_ver" != "$npm_ver" ]; then
+            echo "::error::Version mismatch: plugin.json=$plugin_ver, marketplace.json=$market_ver, package.json=$npm_ver. They must agree."
             exit 1
           fi
 

@@ -1,0 +1,54 @@
+name: publish-npm
+
+# Publishes plugins/apso to npm as @apso/skills when main carries a version
+# that npm doesn't have yet. Uses npm Trusted Publishing (OIDC), so there is no
+# token: the trusted publisher on npmjs.com must name apsoai/skills and this file.
+on:
+  push:
+    branches: [main]
+    paths: [plugins/apso/**, .claude-plugin/marketplace.json]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: plugins/apso
+    steps:
+      - uses: actions/checkout@v4
+
+      # No registry-url: setup-node would write an .npmrc with a NODE_AUTH_TOKEN
+      # placeholder that shadows OIDC.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Trusted Publishing needs npm >= 11.5.1 (Node 22 ships npm 10).
+      - run: npm install -g npm@^11.5.1
+
+      - name: Versions agree
+        run: |
+          set -euo pipefail
+          pkg=$(jq -r .version package.json)
+          plugin=$(jq -r .version .claude-plugin/plugin.json)
+          market=$(jq -r '.plugins[] | select(.name=="apso") | .version' ../../.claude-plugin/marketplace.json)
+          if [ "$pkg" != "$plugin" ] || [ "$pkg" != "$market" ]; then
+            echo "::error::package.json=$pkg plugin.json=$plugin marketplace.json=$market must agree"
+            exit 1
+          fi
+          echo "VERSION=$pkg" >> "$GITHUB_ENV"
+
+      - name: Publish if new
+        run: |
+          set -euo pipefail
+          if npm view "@apso/skills@$VERSION" version >/dev/null 2>&1; then
+            echo "@apso/skills@$VERSION is already on npm; nothing to do."
+            exit 0
+          fi
+          cp ../../LICENSE LICENSE
+          npm publish --provenance --access public

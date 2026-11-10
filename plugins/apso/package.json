@@ -1,0 +1,15 @@
+{
+  "name": "@apso/skills",
+  "version": "0.7.1",
+  "description": "Apso plugin for Claude Code: database schema design, REST API generation, and backend deployment.",
+  "license": "Apache-2.0",
+  "homepage": "https://apso.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/apsoai/skills.git",
+    "directory": "plugins/apso"
+  },
+  "keywords": ["claude-code", "claude-plugin", "apso", "schema", "rest-api", "backend"],
+  "files": [".claude-plugin/", ".mcp.json", "skills/", "references/", "README.md"],
+  "publishConfig": { "access": "public" }
+}
