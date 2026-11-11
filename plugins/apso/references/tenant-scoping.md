@@ -7,7 +7,7 @@ Read this before you write or change `scopeBy` in an `.apsorc`. Apso enforces te
 1. **Scope every entity that holds tenant data.** That includes child entities: a `Comment` on a `Task`, a `LineItem` on an `Order`, an `Attachment` on a `Document`. If a row belongs to one customer, its entity gets `scopeBy`.
 2. **Scope by a column on the entity itself.** Give each tenant-owned entity its own tenant column, such as `organizationId`, and set `"scopeBy": "organizationId"`. Copying the tenant column onto child entities is intentional. It is what the generated API filters on.
 3. **Never write a nested path** such as `"scopeBy": "task.organizationId"`. Python and Go services don't enforce nested paths at all. TypeScript services through `@apso/cli` 0.46.0 enforce them only on requests for one row, so a list request returns every tenant's rows. Use rule 2 instead.
-4. **Use the same tenant column name across the schema.** If projects use `organizationId`, tasks and comments do too. The column holds the caller's tenant from the auth context (`workspaceId` claim, session organization, or API key tenant).
+4. **Use the same tenant column name across the schema.** If projects use `organizationId`, tasks and comments do too. The column holds the caller's tenant from the auth context (`workspaceId` claim or session organization).
 5. **Add the tenant column one of two ways:**
    - A many-to-one relationship to the tenant entity, when the tenant is in the schema: `{"from": "Comment", "to": "Organization", "type": "ManyToOne", "index": true}` creates `organizationId`.
    - A plain field, when the tenant lives in the auth provider (Clerk or Auth0 organization IDs): `{"name": "organizationId", "type": "text", "length": 64}`.
