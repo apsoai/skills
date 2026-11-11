@@ -1,6 +1,6 @@
 {
   "name": "@apso/skills",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "Apso plugin for Claude Code: database schema design, REST API generation, and backend deployment.",
   "license": "Apache-2.0",
   "homepage": "https://apso.dev",

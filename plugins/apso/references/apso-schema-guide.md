@@ -130,6 +130,8 @@ The `.apsorc` file is a JSON file in the project root. The CLI finds it by searc
 | `uniques` | `Unique[]` | `[]` | Composite unique constraints. |
 | `scopeBy` | `string \| string[]` | _(none)_ | Multi-tenancy scope field(s). |
 | `scopeOptions` | `ScopeOptions` | _(defaults)_ | Scope enforcement behavior. |
+| `permissions` | `{ read?, create?, update?, delete?: string[] }` | _(none)_ | Roles allowed per operation. See `mcp-and-permissions.md`. |
+| `mcp` | `true \| ("read" \| "create" \| "update" \| "delete")[]` | _(off)_ | Serve the entity's routes as MCP tools. See `mcp-and-permissions.md`. |
 
 ### ScopeBy
 
@@ -363,21 +365,22 @@ The service verifies each token's signature against the issuer's JWKS (`issuer` 
 - Claim names match an exact key first (`https://yourapp.com/roles`), then a dotted path (`o.id`, `app_metadata.org_id`).
 - `workspaceId` is the tenant that `scopeBy` filters on. TypeScript, Go and Python (CLI 0.46.0+) enforce `scopeBy` on the entity's own fields. Don't use nested paths such as `task.workspaceId`: Python and Go ignore them, and TypeScript through 0.46.0 doesn't apply them to list requests. Give each tenant-owned entity its own tenant column.
 
-### API Key
+Supported providers: `better-auth`, `custom-db-session` (TypeScript only), `auth0`, `clerk`, `cognito`, `jwt` (TypeScript, Go, Python). The `auth` block is for user sign-in only. Do not use `"provider": "api-key"`: it is being removed (apsoai/cli#207).
+
+### Role permissions and MCP tools
+
+An entity can restrict operations to roles with `permissions`, and serve its routes to agents as MCP tools with `mcp`:
 
 ```json
 {
-  "auth": {
-    "provider": "api-key",
-    "apiKeyHeader": "x-api-key",
-    "apiKeyEntity": "ApiKey"
-  }
+  "name": "Invoice",
+  "scopeBy": "organizationId",
+  "permissions": { "read": ["owner", "billing"], "delete": ["owner"] },
+  "mcp": ["read"]
 }
 ```
 
-The `ApiKey` entity needs a `keyHash` text field holding the hex SHA-256 of each key (never the key itself), plus a ManyToOne to the organization. Optional `status` (`active`/`revoked`) and `expiresAt` fields are enforced when present.
-
-Supported providers: `better-auth`, `custom-db-session` (TypeScript only), `auth0`, `clerk`, `cognito`, `jwt`, `api-key` (TypeScript, Go, Python).
+Both need an `auth` block, a TypeScript service and an `@apso/cli` release later than 0.48.0. Read `mcp-and-permissions.md` in this folder before you write either key: it covers runtime grants, the checks the CLI enforces, `@McpTool` on hand-written routes and the rules for API keys.
 
 ---
 

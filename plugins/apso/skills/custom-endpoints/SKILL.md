@@ -1,7 +1,7 @@
 ---
 name: custom-endpoints
 category: api
-description: Add custom business logic endpoints beyond generated CRUD, or replace a generated endpoint with a hand-written one, including report, dashboard and stats endpoints that run hand-written SQL. Extension controllers, services, middleware, and interceptors. Use before writing any SQL query for an Apso service. Triggers on "add custom endpoint", "business logic", "custom API route", "extend the API", "add webhook", "replace generated endpoint", "override CRUD", "custom controller", "Stripe-shaped API", "reporting endpoint", "write the SQL", "aggregate query", "dashboard stats".
+description: Add custom business logic endpoints beyond generated CRUD, or replace a generated endpoint with a hand-written one, including report, dashboard and stats endpoints that run hand-written SQL. Extension controllers, services, middleware, and interceptors. Use before writing any SQL query for an Apso service. Also covers exposing routes to AI agents as MCP tools: `@McpTool` on a hand-written route and `mcp` on an entity. Triggers on "MCP tool", "agent-callable", "let agents call", "expose to agents", "add custom endpoint", "business logic", "custom API route", "extend the API", "add webhook", "replace generated endpoint", "override CRUD", "custom controller", "Stripe-shaped API", "reporting endpoint", "write the SQL", "aggregate query", "dashboard stats".
 ---
 
 # Custom Endpoints
@@ -221,6 +221,36 @@ async report(@Req() req) {
 - Quote camelCase columns (`"projectId"`) and the `"user"` table. Tables are snake_case (`time_entry`).
 - Aggregate each child table in its own subquery. Joining `task` and `time_entry` to `project` in one `FROM` and summing multiplies the rows.
 - End every `ORDER BY` with a unique column so pages and ties are stable.
+
+## Pattern 7: Agent-callable action (MCP tool)
+
+When the user wants their end users' agents to call a custom route, write it as in Pattern 1 and add `@McpTool` from `@apso/mcp`. TypeScript only, and it needs an `auth` block and an `@apso/cli` release later than 0.48.0. Read `${CLAUDE_PLUGIN_ROOT}/references/mcp-and-permissions.md` first.
+
+```typescript
+// src/extensions/Invoice/Invoice.controller.ts
+import { McpTool } from '@apso/mcp';
+
+export class ApproveInvoiceDto {
+  @ApiProperty({ description: 'Why the invoice was approved' })
+  @IsString()
+  note: string;
+}
+
+@Post(':id/approve')
+@ApiOperation({ summary: 'Approve an invoice' })
+@McpTool({
+  name: 'approve_invoice',
+  description: 'Approve one invoice by id and record a note. Fails if the invoice is already approved.',
+})
+approve(@Param('id') id: string, @Body() dto: ApproveInvoiceDto, @Req() req) {
+  return this.invoiceService.approve(id, dto.note, req.organizationId);
+}
+```
+
+- Give the tool a snake_case `name` and a `description` that tells an agent what the call does and when it fails.
+- Type the body with a DTO class whose fields have `@ApiProperty`. The app fails at start-up on `@Body() body: any` or an inline type such as `{ note: string }`.
+- A tool call runs through the same guards as a REST call. The service still filters by `req.organizationId` itself, as in Pattern 1.
+- To expose an entity's generated CRUD routes, set `"mcp": true` or `"mcp": ["read"]` on the entity in `.apsorc`. Do not hand-write those.
 
 ## Replacing a generated endpoint (not just adding)
 

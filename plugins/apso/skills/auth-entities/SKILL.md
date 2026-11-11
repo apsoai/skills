@@ -1,7 +1,7 @@
 ---
 name: auth-entities
 category: auth
-description: Add authentication entities to a schema. Defines users, accounts, sessions, verification tokens, roles, and permissions. Use for any change to who belongs to what and what they may do: users in several organizations, memberships with a role per organization, custom roles, permissions on resources. Triggers on "add auth entities", "user authentication schema", "roles and permissions", "RBAC schema", "users belong to several organizations", "role in each organization", "custom roles", "fine-grained permissions", "membership".
+description: Add authentication entities to a schema. Defines users, accounts, sessions, verification tokens, roles, and permissions. Use for any change to who belongs to what and what they may do: users in several organizations, memberships with a role per organization, custom roles, permissions on resources, which roles may read, create, update or delete an entity (`permissions` in `.apsorc`), runtime permission grants, and API key questions. Triggers on "only admins can delete", "restrict to a role", "role permissions", "grant a permission", "API key", "add auth entities", "user authentication schema", "roles and permissions", "RBAC schema", "users belong to several organizations", "role in each organization", "custom roles", "fine-grained permissions", "membership".
 ---
 
 # Authentication Entity Patterns
@@ -145,40 +145,26 @@ For apps with granular permissions beyond simple role enums.
 
 **When to use:** Apps where different organizations define custom roles with different permission sets. If you only need owner/admin/member/viewer, use a simple enum field on the membership table instead.
 
-## Pattern 4: API Key Authentication
+## Pattern 4: Restrict operations to roles (enforced by the API)
 
-For service-to-service or developer API access.
+Patterns 2 and 3 store who has which role. They do not stop anyone calling a route. To have the API refuse a call, set `permissions` on the entity. Use this when the user says which roles may read, create, update or delete something.
 
 ```json
 {
-  "auth": {
-    "provider": "api-key",
-    "apiKeyHeader": "x-api-key",
-    "apiKeyEntity": "ApiKey"
-  },
-  "entities": [
-    {
-      "name": "ApiKey",
-      "created_at": true,
-      "updated_at": true,
-      "scopeBy": "organizationId",
-      "fields": [
-        { "name": "name", "type": "text", "length": 100 },
-        { "name": "keyHash", "type": "text", "length": 255 },
-        { "name": "prefix", "type": "text", "length": 10 },
-        { "name": "scopes", "type": "json-plain", "nullable": true },
-        { "name": "expiresAt", "type": "timestamptz", "nullable": true },
-        { "name": "lastUsedAt", "type": "timestamptz", "nullable": true },
-        { "name": "status", "type": "enum", "values": ["active", "revoked"], "default": "active" }
-      ]
-    }
-  ],
-  "relationships": [
-    {"from": "ApiKey", "to": "Organization", "type": "ManyToOne", "index": true},
-    {"from": "ApiKey", "to": "User", "type": "ManyToOne", "to_name": "createdBy", "index": true}
-  ]
+  "name": "Invoice",
+  "scopeBy": "organizationId",
+  "permissions": { "read": ["owner", "billing"], "delete": ["owner"] },
+  "fields": [{ "name": "total", "type": "integer" }]
 }
 ```
+
+An operation that is not listed stays open to every signed-in caller. When admins must change access at runtime, add the `RolePermission` grants entity with its own `permissions` for `create`, `update` and `delete` and its own `scopeBy`. The CLI refuses a grants entity without them, because any user could then grant themselves access.
+
+Read `${CLAUDE_PLUGIN_ROOT}/references/mcp-and-permissions.md` before you write `permissions`: it has the grants entity, the CLI's checks, where roles come from, and the version this needs (TypeScript, `@apso/cli` later than 0.48.0, an `auth` block).
+
+## API keys
+
+Do not use `"provider": "api-key"` in the `auth` block. It is being removed (apsoai/cli#207); `auth` is for user sign-in only. An API key is a server-side secret: a caller that holds one is not tenant-scoped, so it never goes in browser code. See the API keys section of `${CLAUDE_PLUGIN_ROOT}/references/mcp-and-permissions.md`.
 
 ## Pattern 5: JWT Providers (Auth0, Clerk, Cognito, any JWKS issuer)
 

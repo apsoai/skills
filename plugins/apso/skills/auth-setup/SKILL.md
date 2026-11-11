@@ -200,9 +200,14 @@ BetterAuth is the default. Other supported providers:
 | `clerk` | `provider: "clerk"` | Drop-in UI components |
 | `cognito` | `provider: "cognito"` | AWS-native apps |
 | `jwt` | `provider: "jwt"` | Any issuer with a JWKS: Supabase Auth, Firebase, Okta, WorkOS, Better Auth's JWT plugin |
-| `api-key` | `provider: "api-key"` | Service-to-service auth |
 | `custom-db-session` | `provider: "custom-db-session"` | Custom session table (TypeScript only) |
 
-Token and API key checks need `@apso/cli` 0.45.0 or later and work in TypeScript, Go, and Python. For a Go or Python service with Better Auth, turn on Better Auth's JWT plugin and use `jwt`.
+Token checks need `@apso/cli` 0.45.0 or later and work in TypeScript, Go, and Python. For a Go or Python service with Better Auth, turn on Better Auth's JWT plugin and use `jwt`.
+
+The `auth` block is for user sign-in only. Do not use `provider: "api-key"`: it is being removed (apsoai/cli#207). An API key is a server-side secret and never goes in browser code. See `${CLAUDE_PLUGIN_ROOT}/references/mcp-and-permissions.md`.
+
+## Roles, permissions and agent access
+
+Once auth is in place, an entity can restrict operations to roles (`"permissions": { "delete": ["owner"] }`) and serve its routes to the users' own agents as MCP tools (`"mcp": ["read"]`). Both are TypeScript only and need an `@apso/cli` release later than 0.48.0. Read `${CLAUDE_PLUGIN_ROOT}/references/mcp-and-permissions.md` before you write either key.
 
 See `auth-entities` skill for schema patterns for each provider.
