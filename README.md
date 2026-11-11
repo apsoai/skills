@@ -13,6 +13,19 @@ claude plugin marketplace add apsoai/skills
 claude plugin install apso@apso
 ```
 
+**From npm** (`@apso/skills`), for a team marketplace you run yourself. Add this entry to
+its `.claude-plugin/marketplace.json`:
+
+```json
+{
+  "name": "apso",
+  "source": { "source": "npm", "package": "@apso/skills" },
+  "description": "Apso schema design, REST API generation, and deployment."
+}
+```
+
+Pin a release with `"version": "0.7.1"` inside `source`.
+
 **Claude Cowork** — upload `plugins/apso` as a custom plugin (zip the directory),
 or install from the marketplace once published.
 
