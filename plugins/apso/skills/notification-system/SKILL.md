@@ -116,3 +116,8 @@ Track which notifications have been sent via email and batch them into digests.
 | Email digests, multi-channel delivery | + Delivery Tracking (Pattern 3) |
 
 Start with Pattern 1. Add preferences and delivery tracking when user feedback demands it.
+
+
+## When you're done
+
+After editing `.apsorc`, run `apso schema validate --local` (or the `validate_schema` MCP tool), fix every error, and run it again until it passes. If `apso` is missing or older than 0.49, run `npx -y @apso/cli@^0.49 schema validate --local`. If no check could run, say so in your report instead of calling the schema valid.

@@ -163,3 +163,8 @@ The key to all tree patterns is the self-referencing relationship:
 Declare only this one relationship. Apso does not generate a `children` collection for a self-reference, and adding a `"type": "OneToMany"` self-reference produces a second, required foreign key to the same table. Load children by filtering on `parentId`.
 
 The same rule applies to any self-reference outside a tree, such as `User.manager` for an org chart: one nullable `ManyToOne` with a `to_name`.
+
+
+## When you're done
+
+After editing `.apsorc`, run `apso schema validate --local` (or the `validate_schema` MCP tool), fix every error, and run it again until it passes. If `apso` is missing or older than 0.49, run `npx -y @apso/cli@^0.49 schema validate --local`. If no check could run, say so in your report instead of calling the schema valid.

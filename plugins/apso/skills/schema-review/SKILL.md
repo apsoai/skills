@@ -76,3 +76,7 @@ OPTIONAL — Project.name has no unique constraint within an org
 - `schema-designer` — produce a schema from requirements (this skill hardens the result)
 - `${CLAUDE_PLUGIN_ROOT}/references/data-modeling-principles.md` — the design rigor this skill applies
 - `multi-tenancy`, `audit-trail`, `soft-delete` — patterns a review commonly recommends
+
+## Run the validator first
+
+Before reviewing, run `apso schema validate --local` (or the `validate_schema` MCP tool; `npx -y @apso/cli@^0.49 schema validate --local` when `apso` is missing or older than 0.49). Put its errors and warnings in your findings, and spend the review on what a validator can't judge. If it couldn't run, say so in the report.

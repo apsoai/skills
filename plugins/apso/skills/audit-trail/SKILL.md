@@ -144,3 +144,8 @@ Track exact field-level changes for critical entities.
 | "What exactly changed in this field?" | Change History (Pattern 4) | 1 extra table, 1 row per field change |
 
 Start with Pattern 1 (always) and Pattern 2 (usually). Add Pattern 3 or 4 only when you have a specific use case.
+
+
+## When you're done
+
+After editing `.apsorc`, run `apso schema validate --local` (or the `validate_schema` MCP tool), fix every error, and run it again until it passes. If `apso` is missing or older than 0.49, run `npx -y @apso/cli@^0.49 schema validate --local`. If no check could run, say so in your report instead of calling the schema valid.
