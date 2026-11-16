@@ -324,12 +324,15 @@ Relationships are defined in a separate top-level `relationships` array.
 
 Auth is optional. When configured, `apso generate` produces auth and scope guards in `src/autogen/guards/`.
 
-### BetterAuth / Custom DB Session
+### BetterAuth
+
+`auth.url` is required: Better Auth's base URL, the app that runs Better Auth, ending in `/api/auth`. The generated service verifies the JWTs Better Auth issues, so turn on Better Auth's JWT plugin and send its token as `Authorization: Bearer`.
 
 ```json
 {
   "auth": {
     "provider": "better-auth",
+    "url": "https://app.example.com/api/auth",
     "sessionEntity": "session",
     "userEntity": "User",
     "accountUserEntity": "AccountUser",
@@ -423,7 +426,8 @@ A task management API with organizations, projects, and tasks:
   "rootFolder": "src",
   "language": "typescript",
   "auth": {
-    "provider": "better-auth"
+    "provider": "better-auth",
+    "url": "https://app.example.com/api/auth"
   },
   "entities": [
     {

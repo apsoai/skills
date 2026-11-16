@@ -46,6 +46,13 @@ apso whoami
 ```
 
 Rules for headless callers:
+- **No token and not signed in** (`apso whoami` says so): run `apso login` as a
+  background command. It prints a sign-in link, opens the browser, and waits up
+  to 5 minutes. Tell the user to finish signing in there (no account yet: sign
+  up at https://app.apso.cloud/signup first), wait for the command to exit,
+  then continue.
+  `apso deploy` on CLI versions that sign in on their own does the same thing,
+  so run it in the background too when the user isn't signed in.
 - Every workspace-scoped command needs a workspace — set it with `apso use <slug>`
   once, or pass `--workspace <slug>`. Use the workspace **slug**, not its name.
 - **Empty account (no workspaces):** workspaces are created in the web app, NOT the

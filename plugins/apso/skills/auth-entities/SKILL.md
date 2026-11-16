@@ -10,12 +10,13 @@ Add authentication and authorization entities to your schema. Covers user manage
 
 ## Pattern 1: BetterAuth (Recommended)
 
-BetterAuth requires specific entity names. The User entity is PascalCase; `account`, `session`, and `verification` are lowercase.
+`auth.url` is required: Better Auth's base URL, the app that runs Better Auth, ending in `/api/auth`. The generated service verifies the JWTs Better Auth issues, so turn on Better Auth's JWT plugin and send its token as `Authorization: Bearer`. BetterAuth requires specific entity names. The User entity is PascalCase; `account`, `session`, and `verification` are lowercase.
 
 ```json
 {
   "auth": {
-    "provider": "better-auth"
+    "provider": "better-auth",
+    "url": "https://app.example.com/api/auth"
   },
   "entities": [
     {
@@ -195,3 +196,8 @@ The service verifies each token's signature against the issuer's JWKS (`issuer` 
 - `workspaceId` is the tenant that `scopeBy` filters on. TypeScript, Go and Python (CLI 0.46.0+) enforce `scopeBy` on the entity's own fields. Don't use nested paths such as `task.workspaceId`: Python and Go ignore them, and TypeScript through 0.46.0 doesn't apply them to list requests. Give each tenant-owned entity its own tenant column; see `${CLAUDE_PLUGIN_ROOT}/references/tenant-scoping.md`.
 
 The User entity still exists in your schema, but it syncs from the provider rather than storing credentials.
+
+
+## When you're done
+
+After editing `.apsorc`, run `apso schema validate --local` (or the `validate_schema` MCP tool), fix every error, and run it again until it passes. If `apso` is missing or older than 0.50, run `npx -y @apso/cli@^0.50 schema validate --local`. If no check could run, say so in your report instead of calling the schema valid.
