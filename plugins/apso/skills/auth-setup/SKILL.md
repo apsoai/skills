@@ -19,12 +19,13 @@ Add authentication to an existing API. Handles user registration, login, session
 
 Add the BetterAuth entities to your `.apsorc`. See the `auth-entities` skill for complete patterns.
 
-The minimum BetterAuth setup requires these entities:
+The minimum BetterAuth setup requires these entities. `auth.url` is required: Better Auth's base URL, the app that runs Better Auth, ending in `/api/auth`. The generated service verifies the JWTs Better Auth issues, so turn on Better Auth's JWT plugin and send its token as `Authorization: Bearer`.
 
 ```json
 {
   "auth": {
-    "provider": "better-auth"
+    "provider": "better-auth",
+    "url": "https://app.example.com/api/auth"
   },
   "entities": [
     {
@@ -206,3 +207,8 @@ BetterAuth is the default. Other supported providers:
 Token and API key checks need `@apso/cli` 0.45.0 or later and work in TypeScript, Go, and Python. For a Go or Python service with Better Auth, turn on Better Auth's JWT plugin and use `jwt`.
 
 See `auth-entities` skill for schema patterns for each provider.
+
+
+## When you're done
+
+After editing `.apsorc`, run `apso schema validate --local` (or the `validate_schema` MCP tool), fix every error, and run it again until it passes. If `apso` is missing or older than 0.50, run `npx -y @apso/cli@^0.50 schema validate --local`. If no check could run, say so in your report instead of calling the schema valid.

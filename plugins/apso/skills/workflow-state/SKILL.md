@@ -181,3 +181,8 @@ Multi-step approvals with sequential or parallel reviewers.
 | Need to track time-in-stage | + Transition History (Pattern 2) |
 | Users define their own stages | Custom Pipeline (Pattern 3) |
 | Multi-step sign-off process | Approval Workflow (Pattern 4) |
+
+
+## When you're done
+
+After editing `.apsorc`, run `apso schema validate --local` (or the `validate_schema` MCP tool), fix every error, and run it again until it passes. If `apso` is missing or older than 0.50, run `npx -y @apso/cli@^0.50 schema validate --local`. If no check could run, say so in your report instead of calling the schema valid.

@@ -245,3 +245,8 @@ the semantic events.**
 - `notification-system` — in-app notifications, often a *consumer* of domain events
 - `workflow-state` — state machines whose transitions are the canonical source of semantic events
 - `custom-endpoints` — where explicit semantic emits live alongside business logic
+
+
+## When you're done
+
+After editing `.apsorc`, run `apso schema validate --local` (or the `validate_schema` MCP tool), fix every error, and run it again until it passes. If `apso` is missing or older than 0.50, run `npx -y @apso/cli@^0.50 schema validate --local`. If no check could run, say so in your report instead of calling the schema valid.
