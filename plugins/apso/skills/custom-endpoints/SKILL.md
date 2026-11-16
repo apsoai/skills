@@ -224,7 +224,7 @@ async report(@Req() req) {
 
 ## Pattern 7: Agent-callable action (MCP tool)
 
-When the user wants their end users' agents to call a custom route, write it as in Pattern 1 and add `@McpTool` from `@apso/mcp`. TypeScript only, and it needs an `auth` block and an `@apso/cli` release later than 0.48.0. Read `${CLAUDE_PLUGIN_ROOT}/references/mcp-and-permissions.md` first.
+When the user wants their end users' agents to call a custom route, write it as in Pattern 1 and add `@McpTool` from `@apso/mcp`. TypeScript only, and it needs `@apso/cli` 0.49.0 or later. End users reach the tool at `/mcp`, which needs an `auth` block; the team reaches it at `/mcp/internal` with the API key. Read `${CLAUDE_PLUGIN_ROOT}/references/mcp-and-permissions.md` first.
 
 ```typescript
 // src/extensions/Invoice/Invoice.controller.ts

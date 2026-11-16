@@ -161,11 +161,11 @@ Patterns 2 and 3 store who has which role. They do not stop anyone calling a rou
 
 An operation that is not listed stays open to every signed-in caller. When admins must change access at runtime, add the `RolePermission` grants entity with its own `permissions` for `create`, `update` and `delete` and its own `scopeBy`. The CLI refuses a grants entity without them, because any user could then grant themselves access.
 
-Read `${CLAUDE_PLUGIN_ROOT}/references/mcp-and-permissions.md` before you write `permissions`: it has the grants entity, the CLI's checks, where roles come from, and the version this needs (TypeScript, `@apso/cli` later than 0.48.0, an `auth` block).
+Read `${CLAUDE_PLUGIN_ROOT}/references/mcp-and-permissions.md` before you write `permissions`: it has the grants entity, the CLI's checks, where roles come from, and the version this needs (`@apso/cli` 0.49.0 or later, and an `auth` block).
 
 ## API keys
 
-Do not use `"provider": "api-key"` in the `auth` block. It is being removed (apsoai/cli#207); `auth` is for user sign-in only. An API key is a server-side secret: a caller that holds one is not tenant-scoped, so it never goes in browser code. See the API keys section of `${CLAUDE_PLUGIN_ROOT}/references/mcp-and-permissions.md`.
+Do not use `"provider": "api-key"` in the `auth` block. It was removed in 0.49.0, and generate refuses it; `auth` is for user sign-in only. Every service has a built-in key check instead (`APSO_API_KEY`, sent in `x-api-key`). An API key is a server-side secret: a caller that holds one is not tenant-scoped, so it never goes in browser code. See the API keys section of `${CLAUDE_PLUGIN_ROOT}/references/mcp-and-permissions.md`.
 
 ## Pattern 5: JWT Providers (Auth0, Clerk, Cognito, any JWKS issuer)
 

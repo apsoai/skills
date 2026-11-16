@@ -205,11 +205,11 @@ BetterAuth is the default. Other supported providers:
 
 Token checks need `@apso/cli` 0.45.0 or later and work in TypeScript, Go, and Python. For a Go or Python service with Better Auth, turn on Better Auth's JWT plugin and use `jwt`.
 
-The `auth` block is for user sign-in only. Do not use `provider: "api-key"`: it is being removed (apsoai/cli#207). An API key is a server-side secret and never goes in browser code. See `${CLAUDE_PLUGIN_ROOT}/references/mcp-and-permissions.md`.
+The `auth` block is for user sign-in only. Do not use `provider: "api-key"`: it was removed in 0.49.0, and every service has a built-in key check instead (`APSO_API_KEY`, sent in `x-api-key`). An API key is a server-side secret and never goes in browser code. See `${CLAUDE_PLUGIN_ROOT}/references/mcp-and-permissions.md`.
 
 ## Roles, permissions and agent access
 
-Once auth is in place, an entity can restrict operations to roles (`"permissions": { "delete": ["owner"] }`) and serve its routes to the users' own agents as MCP tools (`"mcp": ["read"]`). Both are TypeScript only and need an `@apso/cli` release later than 0.48.0. Read `${CLAUDE_PLUGIN_ROOT}/references/mcp-and-permissions.md` before you write either key.
+Once auth is in place, an entity can restrict operations to roles (`"permissions": { "delete": ["owner"] }`) and serve its routes to the users' own agents as MCP tools (`"mcp": ["read"]`). Both need `@apso/cli` 0.49.0 or later. End users' agents call `/mcp`; the team's own agents call `/mcp/internal` with the API key. Read `${CLAUDE_PLUGIN_ROOT}/references/mcp-and-permissions.md` before you write either key.
 
 See `auth-entities` skill for schema patterns for each provider.
 

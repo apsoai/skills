@@ -153,33 +153,17 @@ The copied `organizationId` is intentional. A nested path such as `"scopeBy": "t
 
 ## Scope Options
 
-Fine-tune scope enforcement:
-
-```json
-{
-  "name": "AuditLog",
-  "scopeBy": "organizationId",
-  "scopeOptions": {
-    "injectOnCreate": true,
-    "enforceOn": ["find", "get"]
-  },
-  "fields": [...]
-}
-```
+The scope covers every operation, and the tenant on a write always comes from the caller. There is one option:
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `injectOnCreate` | `true` | Auto-set tenant ID on POST requests |
-| `enforceOn` | `["find","get","create","update","delete"]` | Which operations enforce scoping |
 | `bypassRoles` | `[]` | Roles that skip the scope guard. In a TypeScript service with auth, direct scope fields are still filtered for these roles. |
 
 ### Common Configurations
 
-**Read-only scope** (audit logs, analytics): enforce on `find` and `get` only.
-
 **Admin access across tenants**: don't use `bypassRoles` for this. A TypeScript service with auth still filters direct scope fields for every role. Build support views as a separate endpoint or service, and tell the user.
 
-**No auto-inject**: set `injectOnCreate: false` when the client must explicitly provide the tenant ID.
+**Removed options**: do not write `injectOnCreate` or `enforceOn`. `@apso/cli` 0.49.0 removed both, and `apso schema validate` fails a schema that sets either. A caller that must set another tenant on a write is a service caller with the API key.
 
 ## What NOT to Scope
 
