@@ -163,7 +163,7 @@ The scope covers every operation, and the tenant on a write always comes from th
 
 **Admin access across tenants**: don't use `bypassRoles` for this. A TypeScript service with auth still filters direct scope fields for every role. Build support views as a separate endpoint or service, and tell the user.
 
-**Removed options**: do not write `injectOnCreate` or `enforceOn`. `@apso/cli` 0.49.0 removed both, and `apso schema validate` fails a schema that sets either.
+**No other options**: `bypassRoles` is the only key `scopeOptions` takes. The keys that limited the scope to some operations or left the tenant unset on create were removed in `@apso/cli` 0.49.0, and `apso schema validate` fails a schema that sets them.
 
 ## What NOT to Scope
 
