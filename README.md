@@ -67,7 +67,7 @@ Cowork installs from an uploaded zip don't auto-update — re-zip `plugins/apso/
         └── README.md                 # Plugin docs + skill list
 ```
 
-See [`plugins/apso/README.md`](plugins/apso/README.md) for the full skill and tool list.
+See [`plugins/apso/README.md`](plugins/apso/README.md) for the full skill and tool list, and [`EVALS.md`](EVALS.md) for running the evals.
 
 ## Powered By
 

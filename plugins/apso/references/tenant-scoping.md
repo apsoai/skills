@@ -17,7 +17,7 @@ Read this before you write or change `scopeBy` in an `.apsorc`. Apso enforces te
    - the tenant entity itself (`Organization`, `Workspace`, `Tenant`)
    - global lookup tables (`Country`, `Currency`, `Plan`)
    - auth entities (`User`, `Session`, `Account`, `Verification`)
-9. **Don't rely on `bypassRoles` for cross-tenant access, and never write `enforceOn` or `injectOnCreate`.** The last two were removed in `@apso/cli` 0.49.0 and fail validation. In a TypeScript service with auth, the generated controller filters direct scope fields for every caller, whatever `bypassRoles` says. Build support or admin views as a separate endpoint or service, and tell the user.
+9. **Don't rely on `bypassRoles` for cross-tenant access, and write no other key in `scopeOptions`.** The keys that limited the scope to some operations or left the tenant unset on create were removed in `@apso/cli` 0.49.0 and fail validation. In a TypeScript service with auth, the generated controller filters direct scope fields for every caller, whatever `bypassRoles` says. Build support or admin views as a separate endpoint or service, and tell the user.
 
 ## Example
 

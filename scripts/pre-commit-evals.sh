@@ -8,12 +8,16 @@
 # A failing case gets one retry: the Haiku judge occasionally fails a correct
 # answer, and with ~30 cases at one run each, one such flake per full run is
 # likely. A real regression fails both times.
-# Install once per clone: ln -sf ../../scripts/pre-commit-evals.sh .git/hooks/pre-commit
-[ "$CLAUDECODE" = 1 ] && [ -z "$SKIP_EVALS" ] || exit 0
+# Run it by hand with case names, or ALL, to test without committing:
+#   sh scripts/pre-commit-evals.sh schema-designer-crm migration-rename-field
+# APSO_CLI_BIN=/path/to/apso-cli/bin/run checks against an unreleased CLI build.
+# Install: see EVALS.md (a symlink runs the main checkout's copy in worktrees).
+if [ $# -eq 0 ]; then [ "$CLAUDECODE" = 1 ] && [ -z "$SKIP_EVALS" ] || exit 0; fi
 cd "$(git rev-parse --show-toplevel)" || exit 1
 E=plugins/apso/evals
 staged=$(git diff --cached --name-only -- plugins/apso/skills plugins/apso/references $E)
-[ -n "$staged" ] || exit 0
+[ -n "$staged" ] || [ $# -gt 0 ] || exit 0
+if [ -n "$APSO_CLI_BIN" ]; then cli="node $APSO_CLI_BIN"; else cli="npx -y @apso/cli@latest"; fi
 run() { claude plugin eval plugins/apso --runs 1 --ablation none --trust-plugin --allow-tools Write --no-publish --threshold 1 --keep-temp "$@"; }
 
 # Print the cases that scored below 1 in --json report $1, or $2 when the
@@ -33,7 +37,7 @@ validate() {
     chmod 700 "$k" "$k/sealed" 2>/dev/null
     if [ -f "$k/sealed/home/cwd/.apsorc" ]; then
       d=$(mktemp -d); cp "$k/sealed/home/cwd/.apsorc" "$d/"
-      if ! out=$(cd "$d" && npx -y @apso/cli@latest schema validate --local 2>&1); then
+      if ! out=$(cd "$d" && $cli schema validate --local 2>&1); then
         printf -- '--- INVALID .apsorc from %s:\n%s\n' "$c" "$out" >&2; echo "$c"
       fi
       # The CLI generates the inverse side itself, so A OneToMany B plus
@@ -76,7 +80,10 @@ tmp=$(mktemp -d)
 
 # references/ is shared by every skill, so run the whole suite. Otherwise map
 # each changed skill to the cases whose skill-fired grader names it.
-if echo "$staged" | grep -q '^plugins/apso/references/'; then
+if [ $# -gt 0 ]; then
+  cases="$*"
+  echo "evals for" $cases >&2
+elif echo "$staged" | grep -q '^plugins/apso/references/'; then
   cases=ALL
   echo "pre-commit: running all skill evals (~5 min). SKIP_EVALS=1 to skip." >&2
 else

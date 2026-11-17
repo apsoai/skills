@@ -151,7 +151,7 @@ Every value is a column on the entity itself. Don't write a nested path such as 
 |-----|------|---------|-------------|
 | `bypassRoles` | `string[]` | `[]` | Roles that skip the scope guard. A TypeScript service with auth still filters direct scope fields for them, so don't use this for cross-tenant admin access. |
 
-Do not write `injectOnCreate` or `enforceOn`. Both were removed in `@apso/cli` 0.49.0, and `apso generate` and `apso schema validate` refuse a schema that sets either. The tenant on a write always comes from the caller, and the scope covers every operation.
+`bypassRoles` is the only key `scopeOptions` takes. The keys that used to limit the scope to some operations, or to leave the tenant unset on create, were removed in `@apso/cli` 0.49.0, and `apso generate` and `apso schema validate` refuse a schema that sets them. The tenant on a write always comes from the caller, and the scope covers every operation.
 
 ---
 
