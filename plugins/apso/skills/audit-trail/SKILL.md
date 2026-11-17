@@ -63,10 +63,6 @@ A dedicated entity that records every significant action in the system.
       "name": "ActivityLog",
       "created_at": true,
       "scopeBy": "organizationId",
-      "scopeOptions": {
-        "enforceOn": ["find", "get"],
-        "injectOnCreate": true
-      },
       "fields": [
         { "name": "action", "type": "enum", "values": ["create", "update", "delete", "archive", "restore", "assign", "invite", "login"] },
         { "name": "entityType", "type": "text", "length": 50 },

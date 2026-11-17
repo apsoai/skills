@@ -109,8 +109,6 @@ The `.apsorc` file is a JSON file in the project root. The CLI finds it by searc
   "primaryKeyType": "serial",
   "scopeBy": "organizationId",
   "scopeOptions": {
-    "injectOnCreate": true,
-    "enforceOn": ["find", "get", "create", "update", "delete"],
     "bypassRoles": ["admin"]
   },
   "fields": [],
@@ -149,9 +147,9 @@ Every value is a column on the entity itself. Don't write a nested path such as 
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `injectOnCreate` | `boolean` | `true` | Auto-inject scope value on POST requests. |
-| `enforceOn` | `ScopeOperation[]` | `["find","get","create","update","delete"]` | Which operations enforce scoping. |
 | `bypassRoles` | `string[]` | `[]` | Roles that skip the scope guard. A TypeScript service with auth still filters direct scope fields for them, so don't use this for cross-tenant admin access. |
+
+Do not write `injectOnCreate` or `enforceOn`. Both were removed in `@apso/cli` 0.49.0, and `apso generate` and `apso schema validate` refuse a schema that sets either. The tenant on a write always comes from the caller, and the scope covers every operation.
 
 ---
 
