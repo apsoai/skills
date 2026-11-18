@@ -2,7 +2,7 @@
 
 Read this before you set `mcp` or `permissions` in an `.apsorc`, add `@McpTool` to a route, or answer a question about API keys.
 
-**Version gate.** `mcp` and `permissions` need `@apso/cli` 0.49.0 or later, and work in TypeScript, Python and Go services. Run `apso --version` first. 0.48.0 and earlier accept both keys in `apso schema validate` and then ignore them in `apso generate`, so the roles are not enforced and no tools are served. On an old CLI, tell the user to upgrade; do not write the keys and call the work done. `@McpTool` on a hand-written route is TypeScript only. The internal address `/mcp/internal` needs a CLI release that includes apsoai/cli#235; on 0.49 and 0.50 a service has one address, `/mcp`, and `mcp` needs an `auth` block.
+**Version gate.** `mcp` and `permissions` need `@apso/cli` 0.49.0 or later, and work in TypeScript, Python and Go services. Run `apso --version` first. 0.48.0 and earlier accept both keys in `apso schema validate` and then ignore them in `apso generate`, so the roles are not enforced and no tools are served. On an old CLI, tell the user to upgrade; do not write the keys and call the work done. `@McpTool` on a hand-written route is TypeScript only. The internal address `/mcp/internal` needs `@apso/cli` 0.51.0 or later; on 0.49 and 0.50 a service has one address, `/mcp`, and `mcp` needs an `auth` block.
 
 ## Role permissions on an entity
 
