@@ -201,14 +201,19 @@ BetterAuth is the default. Other supported providers:
 | `clerk` | `provider: "clerk"` | Drop-in UI components |
 | `cognito` | `provider: "cognito"` | AWS-native apps |
 | `jwt` | `provider: "jwt"` | Any issuer with a JWKS: Supabase Auth, Firebase, Okta, WorkOS, Better Auth's JWT plugin |
-| `api-key` | `provider: "api-key"` | Service-to-service auth |
 | `custom-db-session` | `provider: "custom-db-session"` | Custom session table (TypeScript only) |
 
-Token and API key checks need `@apso/cli` 0.45.0 or later and work in TypeScript, Go, and Python. For a Go or Python service with Better Auth, turn on Better Auth's JWT plugin and use `jwt`.
+Token checks need `@apso/cli` 0.45.0 or later and work in TypeScript, Go, and Python. For a Go or Python service with Better Auth, turn on Better Auth's JWT plugin and use `jwt`.
+
+The `auth` block is for user sign-in only. Do not use `provider: "api-key"`: it was removed in 0.49.0, and every service has a built-in key check instead (`APSO_API_KEY`, sent in `x-api-key`). An API key is a server-side secret and never goes in browser code. See `${CLAUDE_PLUGIN_ROOT}/references/mcp-and-permissions.md`.
+
+## Roles, permissions and agent access
+
+Once auth is in place, an entity can restrict operations to roles (`"permissions": { "delete": ["owner"] }`) and serve its routes to the users' own agents as MCP tools (`"mcp": ["read"]`). Both need `@apso/cli` 0.49.0 or later. End users' agents call `/mcp`; the team's own agents call `/mcp/internal` with the API key. Read `${CLAUDE_PLUGIN_ROOT}/references/mcp-and-permissions.md` before you write either key.
 
 See `auth-entities` skill for schema patterns for each provider.
 
 
 ## When you're done
 
-After editing `.apsorc`, run `apso schema validate --local` (or the `validate_schema` MCP tool), fix every error, and run it again until it passes. If `apso` is missing or older than 0.50, run `npx -y @apso/cli@^0.50 schema validate --local`. If no check could run, say so in your report instead of calling the schema valid.
+After editing `.apsorc`, run `apso schema validate --local` (or the `validate_schema` MCP tool), fix every error, and run it again until it passes. If `apso` is missing or older than 0.50, run `npx -y @apso/cli@^0.51 schema validate --local`. If no check could run, say so in your report instead of calling the schema valid.

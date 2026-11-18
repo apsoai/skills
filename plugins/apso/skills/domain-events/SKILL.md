@@ -249,4 +249,4 @@ the semantic events.**
 
 ## When you're done
 
-After editing `.apsorc`, run `apso schema validate --local` (or the `validate_schema` MCP tool), fix every error, and run it again until it passes. If `apso` is missing or older than 0.50, run `npx -y @apso/cli@^0.50 schema validate --local`. If no check could run, say so in your report instead of calling the schema valid.
+After editing `.apsorc`, run `apso schema validate --local` (or the `validate_schema` MCP tool), fix every error, and run it again until it passes. If `apso` is missing or older than 0.50, run `npx -y @apso/cli@^0.51 schema validate --local`. If no check could run, say so in your report instead of calling the schema valid.
