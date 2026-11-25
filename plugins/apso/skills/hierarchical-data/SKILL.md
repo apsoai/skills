@@ -167,4 +167,4 @@ The same rule applies to any self-reference outside a tree, such as `User.manage
 
 ## When you're done
 
-After editing `.apsorc`, run `apso schema validate --local` (or the `validate_schema` MCP tool), fix every error, and run it again until it passes. If `apso` is missing or older than 0.50, run `npx -y @apso/cli@^0.55 schema validate --local`. If no check could run, say so in your report instead of calling the schema valid.
+After editing `.apsorc`, run `apso schema validate --local` (or the `validate_schema` MCP tool), fix every error, and run it again until it passes. If `apso` is missing or older than 0.50, run `npx -y @apso/cli@^0.56 schema validate --local`. If no check could run, say so in your report instead of calling the schema valid.

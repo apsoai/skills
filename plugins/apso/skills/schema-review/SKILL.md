@@ -79,4 +79,4 @@ OPTIONAL — Project.name has no unique constraint within an org
 
 ## Run the validator first
 
-Before reviewing, run `apso schema validate --local` (or the `validate_schema` MCP tool; `npx -y @apso/cli@^0.55 schema validate --local` when `apso` is missing or older than 0.50). Put its errors and warnings in your findings, and spend the review on what a validator can't judge. If it couldn't run, say so in the report.
+Before reviewing, run `apso schema validate --local` (or the `validate_schema` MCP tool; `npx -y @apso/cli@^0.56 schema validate --local` when `apso` is missing or older than 0.50). Put its errors and warnings in your findings, and spend the review on what a validator can't judge. If it couldn't run, say so in the report.
