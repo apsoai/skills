@@ -263,7 +263,7 @@ Relationships are defined in a separate top-level `relationships` array.
 | `cascadeDelete` | `boolean` | `false` | CASCADE on delete. |
 | `index` | `boolean` | `false` | Index the FK column. |
 | `joinTableName` | `string` | _(auto)_ | Custom join table name for ManyToMany. |
-| `joinColumnName` | `string` | _(auto)_ | Custom FK column name in join table. |
+| `joinColumnName` | `string` | _(auto)_ | ManyToMany: custom FK column name in the join table. ManyToOne, OneToMany, OneToOne: the foreign key column's own name, such as `project_id`; the property stays `projectId`. TypeScript only for a foreign key. |
 | `inverseJoinColumnName` | `string` | _(auto)_ | Custom inverse FK column name in join table. |
 
 ### Relationship Types
@@ -315,6 +315,32 @@ Relationships are defined in a separate top-level `relationships` array.
   ]
 }
 ```
+
+### Keys `apso import` Writes
+
+`apso import` reads an existing Postgres database and writes `.apsorc` with the keys below, so the generated service builds the same tables: the same column names, constraint names, defaults and foreign key rules. Keep them when you edit an imported file. Removing one changes the database at the next `apso migrate`. A schema written from scratch rarely needs them.
+
+| Key | On | Meaning |
+|-----|----|---------|
+| `primaryKeyName` | entity | Name of the primary key constraint. TypeScript only. |
+| `primaryKeyDefault` | entity | SQL expression that fills a `uuid` id, such as `gen_random_uuid()`. |
+| `timestampType` | entity | `timestamp` (default) or `timestamptz` for `created_at` and `updated_at`: one value, or `{ "created_at": ..., "updated_at": ... }`. |
+| `timestampNullable`, `timestampDefault` | entity | Whether those columns accept NULL, and whether they have `DEFAULT now()`. One boolean, or one per column. |
+| `checks` | entity | CHECK constraints: `{ "name"?, "expression", "validate"? }`. `validate: false` keeps one NOT VALID in migrations. |
+| `sqlIndexes` | entity | Indexes whose column list is SQL: `{ "name", "columns", "unique"?, "where"? }`, such as `lower(email)`. TypeScript and Go. |
+| `name`, `where` | index | The index name, and the condition of a partial index. |
+| `foreignKeys` | entity | A second foreign key on a column a relationship already covers: `{ "name", "column", "to", "onDelete"?, "onUpdate"?, "deferrable"?, "validate"? }`. A constraint only, with no property. TypeScript only. |
+| `default: { "sql": "<expression>" }` | field | A default the database computes, such as `now()`. |
+| `noDefault` | field | The column has no default. A boolean field otherwise defaults to `false`. |
+| `generated` | field | SQL expression of a stored generated column. Requests cannot set the field. TypeScript only. |
+| `foreignKeyName` | relationship | Name of the foreign key constraint. TypeScript only. |
+| `onDelete`, `onUpdate` | relationship | `CASCADE`, `SET NULL`, `SET DEFAULT`, `RESTRICT` or `NO ACTION`. `cascadeDelete: true` is `onDelete: "CASCADE"`. `onUpdate` and `SET DEFAULT` are TypeScript only. |
+| `deferrable` | relationship | `INITIALLY DEFERRED` or `INITIALLY IMMEDIATE`. TypeScript only. |
+| `joinColumnDefault` | relationship | DEFAULT of the foreign key column, as a SQL expression. TypeScript only. |
+| `validate` | relationship | `false` keeps the foreign key NOT VALID in migrations. TypeScript only. |
+| `primary` | relationship | The foreign key column is the entity's primary key. No `id` is generated. TypeScript only. |
+
+The import sets `"language": "typescript"`. `apso generate` refuses the TypeScript-only keys for Python and Go and names the key in the error. Imported entity names are the table names (`organizations`); keep them until `apso import data` has copied the rows, because the copy matches tables by name.
 
 ---
 
