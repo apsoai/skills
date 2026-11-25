@@ -81,7 +81,7 @@ Derive indexes from the queries the app will run, not from the columns. For each
 
 ### Step 6: Validate
 
-Always validate before you finish. Run `apso schema validate --local` in the project folder, or call the `validate_schema` MCP tool, which runs the same checks. If `apso` isn't installed or `apso --version` is below 0.50, run `npx -y @apso/cli@^0.57 schema validate --local` instead. Fix every error, and every `FOREIGN_KEY_NOT_INDEXED` warning, except one on a foreign key that already leads a `uniques` entry (that unique index covers it; older linters don't count uniques). Other warnings can stay when there is a reason (for example `MISSING_TIMESTAMPS` on append-only rows). Run it again until it passes.
+Always validate before you finish. Run `apso schema validate --local` in the project folder, or call the `validate_schema` MCP tool, which runs the same checks. If `apso` isn't installed or `apso --version` is below 0.50, run `npx -y @apso/cli@^0.58 schema validate --local` instead. Fix every error, and every `FOREIGN_KEY_NOT_INDEXED` warning, except one on a foreign key that already leads a `uniques` entry (that unique index covers it; older linters don't count uniques). Other warnings can stay when there is a reason (for example `MISSING_TIMESTAMPS` on append-only rows). Run it again until it passes.
 
 If no check could run (no Node, no network), say so in your report, with the reason. Never call a schema valid without a passing run.
 
