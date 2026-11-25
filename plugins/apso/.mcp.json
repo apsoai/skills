@@ -3,7 +3,7 @@
     "apso": {
       "command": "npx",
       "args": [
-        "@apso/cli@^0.57",
+        "@apso/cli@^0.58",
         "mcp",
         "serve"
       ],

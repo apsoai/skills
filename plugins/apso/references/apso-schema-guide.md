@@ -323,7 +323,8 @@ Relationships are defined in a separate top-level `relationships` array.
 | Key | On | Meaning |
 |-----|----|---------|
 | `primaryKeyName` | entity | Name of the primary key constraint. TypeScript only. |
-| `primaryKeyDefault` | entity | SQL expression that fills a `uuid` id, such as `gen_random_uuid()`. |
+| `primaryKeyType: "bigserial"` | entity | The id is a `bigint` with a sequence. The API sends and returns it as a string. TypeScript only. |
+| `primaryKeyDefault` | entity | SQL expression that fills a `uuid` id, such as `gen_random_uuid()`. `null` gives the column no default: every create request sends the `id`. |
 | `timestampType` | entity | `timestamp` (default) or `timestamptz` for `created_at` and `updated_at`: one value, or `{ "created_at": ..., "updated_at": ... }`. |
 | `timestampNullable`, `timestampDefault` | entity | Whether those columns accept NULL, and whether they have `DEFAULT now()`. One boolean, or one per column. |
 | `checks` | entity | CHECK constraints: `{ "name"?, "expression", "validate"? }`. `validate: false` keeps one NOT VALID in migrations. |
@@ -331,6 +332,7 @@ Relationships are defined in a separate top-level `relationships` array.
 | `name`, `where` | index | The index name, and the condition of a partial index. |
 | `foreignKeys` | entity | A second foreign key on a column a relationship already covers: `{ "name", "column", "to", "onDelete"?, "onUpdate"?, "deferrable"?, "validate"? }`. A constraint only, with no property. TypeScript only. |
 | `default: { "sql": "<expression>" }` | field | A default the database computes, such as `now()`. |
+| `enumName` | field | Name of the Postgres enum type of an `enum` field. Fields that share a name share the type and must list the same values. TypeScript only. |
 | `noDefault` | field | The column has no default. A boolean field otherwise defaults to `false`. |
 | `generated` | field | SQL expression of a stored generated column. Requests cannot set the field. TypeScript only. |
 | `foreignKeyName` | relationship | Name of the foreign key constraint. TypeScript only. |
