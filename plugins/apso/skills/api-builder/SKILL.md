@@ -162,4 +162,4 @@ This builds, runs migrations, and deploys to Lambda + RDS + API Gateway. See the
 
 ## When you're done
 
-After editing `.apsorc`, run `apso schema validate --local` (or the `validate_schema` MCP tool), fix every error, and run it again until it passes. If `apso` is missing or older than 0.50, run `npx -y @apso/cli@^0.58 schema validate --local`. If no check could run, say so in your report instead of calling the schema valid.
+After editing `.apsorc`, run `apso schema validate --local` (or the `validate_schema` MCP tool), fix every error, and run it again until it passes. If `apso` is missing or older than 0.50, run `npx -y @apso/cli@^0.59 schema validate --local`. If no check could run, say so in your report instead of calling the schema valid.
